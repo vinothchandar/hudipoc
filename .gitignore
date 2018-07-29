@@ -87,6 +87,9 @@ lib_managed/
 src_managed/
 project/boot/
 project/plugins/project/
+project/.sbtboot/
+project/.boot/
+project/.ivy/
 .history
 .cache
 .lib/
