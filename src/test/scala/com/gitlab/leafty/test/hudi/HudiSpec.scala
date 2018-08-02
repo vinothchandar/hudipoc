@@ -10,9 +10,10 @@ import org.apache.spark.sql.{Dataset, Row, SaveMode, SparkSession}
 import org.junit.rules.TemporaryFolder
 import org.scalatest.BeforeAndAfterAll
 
-class HudiSpec extends AsyncBaseSpec with BeforeAndAfterAll {
+class HudiSpec extends AsyncBaseSpec {
 
   Logger.getLogger("org.apache").setLevel(Level.WARN)
+  Logger.getLogger("com.uber.hoodie").setLevel(Level.WARN)
 
   lazy val spark: SparkSession = getSparkSession
 
@@ -49,7 +50,6 @@ class HudiSpec extends AsyncBaseSpec with BeforeAndAfterAll {
 
       val records1 = DataSourceTestUtils.convertToStringList(dataGen.generateInserts("001", 100)).toList
       val inputDF1: Dataset[Row] = spark.read.json(spark.sparkContext.parallelize(records1, 2).toDS())
-      inputDF1.show()
       inputDF1.write.format("com.uber.hoodie")
         .options(commonOpts)
         .option(DataSourceWriteOptions.OPERATION_OPT_KEY, DataSourceWriteOptions.INSERT_OPERATION_OPT_VAL)
@@ -131,11 +131,6 @@ class HudiSpec extends AsyncBaseSpec with BeforeAndAfterAll {
       .config("spark.ui.enabled", "false")
       .config("spark.serializer", "org.apache.spark.serializer.KryoSerializer")
     builder.getOrCreate()
-  }
-
-  override protected def afterAll(): Unit = {
-    spark.stop()
-    super.afterAll()
   }
 
 }
