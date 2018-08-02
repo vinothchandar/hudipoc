@@ -88,6 +88,8 @@ class FannieMaeHudiSpec extends AsyncBaseSpec {
     val performancesFs = FSUtils.getFs(performancesBasePath, spark.sparkContext.hadoopConfiguration)
 
     val performancesCommitInstantTime1: Promise[String] = Promise()
+    val performancesCommitInstantTime2: Promise[String] = Promise()
+    val performancesCommitInstantTime3: Promise[String] = Promise()
 
     "ingest first half of 'acquisitions'" in {
       val (df, _) = getAcquisitionsSplit
@@ -110,6 +112,7 @@ class FannieMaeHudiSpec extends AsyncBaseSpec {
     }
 
     "ingest first half of 'performances' (1/2)" in {
+      // Group 1 from acquisitions, 1st third
       val (acquisitionsDf, _) = getAcquisitionsSplit
       val ids = acquisitionsDf.select(acquisitionsDf("id")).distinct().collect().map(_.getString(0))
 
@@ -118,20 +121,14 @@ class FannieMaeHudiSpec extends AsyncBaseSpec {
 
       val emptyDF = spark.createDataFrame(spark.sparkContext.emptyRDD[Row], getPerformances.schema)
       val insertDf = dfs.fold(emptyDF){ (df1, df2) => df1.union(df2) }
-      try {
-        insertDf.write
-          .format("com.uber.hoodie")
-          .options(commonOpts)
-          .options(performancesOpts)
-          .option(DataSourceWriteOptions.OPERATION_OPT_KEY, DataSourceWriteOptions.INSERT_OPERATION_OPT_VAL)
-          .mode(SaveMode.Overwrite)
-          .save(performancesBasePath)
-        performancesCommitInstantTime1.success(HoodieDataSourceHelpers.latestCommit(performancesFs, performancesBasePath))
-      } catch {
-        case NonFatal(e) =>
-          performancesCommitInstantTime1.failure(e)
-          throw e
-      }
+      insertDf.write
+        .format("com.uber.hoodie")
+        .options(commonOpts)
+        .options(performancesOpts)
+        .option(DataSourceWriteOptions.OPERATION_OPT_KEY, DataSourceWriteOptions.INSERT_OPERATION_OPT_VAL)
+        .mode(SaveMode.Overwrite)
+        .save(performancesBasePath)
+      performancesCommitInstantTime1.success(HoodieDataSourceHelpers.latestCommit(performancesFs, performancesBasePath))
 
       val hasNewCommits = HoodieDataSourceHelpers.hasNewCommits(performancesFs, performancesBasePath, "000")
       hasNewCommits shouldBe true
@@ -144,6 +141,7 @@ class FannieMaeHudiSpec extends AsyncBaseSpec {
     }
 
     "ingest first half of 'performances' (2/2)" in {
+      // Group 1 from acquisitions, 2nd third
       val (acquisitionsDf, _) = getAcquisitionsSplit
       val ids = acquisitionsDf.select(acquisitionsDf("id")).distinct().collect().map(_.getString(0))
 
@@ -159,11 +157,13 @@ class FannieMaeHudiSpec extends AsyncBaseSpec {
         .option(DataSourceWriteOptions.OPERATION_OPT_KEY, DataSourceWriteOptions.INSERT_OPERATION_OPT_VAL)
         .mode(SaveMode.Append)
         .save(performancesBasePath)
+      performancesCommitInstantTime2.success(HoodieDataSourceHelpers.latestCommit(performancesFs, performancesBasePath))
 
       val commitCount = HoodieDataSourceHelpers.listCommitsSince(performancesFs, performancesBasePath, "000").size()
       commitCount shouldBe 2
 
       // read back data from hudi (using incremental view)
+      performancesCommitInstantTime1.isCompleted shouldBe true
       for { commitTime <- performancesCommitInstantTime1.future } yield {
         val hudiDf = spark.read
           .format("com.uber.hoodie")
@@ -186,6 +186,107 @@ class FannieMaeHudiSpec extends AsyncBaseSpec {
       val joinedDf = acquisitionsDf.join(performancesDf, acquisitionsDf("id") === performancesDf("id_2"), "inner")
 
       joinedDf.count() shouldBe performancesDf.count()
+
+      val a_ids = acquisitionsDf.select(acquisitionsDf("id")).distinct().collect().map(_.getString(0))
+      val j_ids = joinedDf.select(joinedDf("id")).distinct().collect().map(_.getString(0))
+
+      a_ids should contain theSameElementsAs j_ids
+    }
+
+    "ingest second half of 'acquisitions'" in {
+      val (_, df) = getAcquisitionsSplit
+      df.write
+        .format("com.uber.hoodie")
+        .options(commonOpts)
+        .options(acquisitionsOpts)
+        .option(DataSourceWriteOptions.OPERATION_OPT_KEY, DataSourceWriteOptions.INSERT_OPERATION_OPT_VAL)
+        .mode(SaveMode.Append)
+        .save(acquisitionsBasePath)
+
+      val commitCount = HoodieDataSourceHelpers.listCommitsSince(acquisitionsFs, acquisitionsBasePath, "000").size()
+      commitCount shouldBe 2
+
+      // read back data from hudi
+      val hudiDf = spark.read
+        .format("com.uber.hoodie")
+        .load(acquisitionsBasePath + "/*/*/*")
+      hudiDf.count() shouldBe getAcquisitions.count()
+    }
+
+    "ingest second half of 'performances' (1/2)" in {
+      // Group 2 from acquisitions, 1st third
+      val (_, acquisitionsDf) = getAcquisitionsSplit
+      val ids = acquisitionsDf.select(acquisitionsDf("id")).distinct().collect().map(_.getString(0))
+
+      val map = getPerformancesSplit
+      val dfs = for { id <- ids } yield map(id)._1
+
+      val emptyDF = spark.createDataFrame(spark.sparkContext.emptyRDD[Row], getPerformances.schema)
+      val insertDf = dfs.fold(emptyDF){ (df1, df2) => df1.union(df2) }
+      insertDf.write
+        .format("com.uber.hoodie")
+        .options(commonOpts)
+        .options(performancesOpts)
+        .option(DataSourceWriteOptions.OPERATION_OPT_KEY, DataSourceWriteOptions.INSERT_OPERATION_OPT_VAL)
+        .mode(SaveMode.Append)
+        .save(performancesBasePath)
+      performancesCommitInstantTime3.success(HoodieDataSourceHelpers.latestCommit(performancesFs, performancesBasePath))
+
+      val commitCount = HoodieDataSourceHelpers.listCommitsSince(performancesFs, performancesBasePath, "000").size()
+      commitCount shouldBe 3
+
+      // read back data from hudi (using incremental view)
+      performancesCommitInstantTime2.isCompleted shouldBe true
+      for { commitTime <- performancesCommitInstantTime2.future } yield {
+        val hudiDf = spark.read
+          .format("com.uber.hoodie")
+          .option(DataSourceReadOptions.VIEW_TYPE_OPT_KEY, DataSourceReadOptions.VIEW_TYPE_INCREMENTAL_OPT_VAL)
+          .option(DataSourceReadOptions.BEGIN_INSTANTTIME_OPT_KEY, commitTime)
+          .load(performancesBasePath)
+
+        hudiDf.count() shouldBe insertDf.count()
+      }
+    }
+
+    "ingest second half of 'performances' (2/2)" in {
+      // Upsert all performances data
+      val insertDf = getPerformances
+      insertDf.write
+        .format("com.uber.hoodie")
+        .options(commonOpts)
+        .options(performancesOpts)
+        .option(DataSourceWriteOptions.OPERATION_OPT_KEY, DataSourceWriteOptions.UPSERT_OPERATION_OPT_VAL)
+        .mode(SaveMode.Append)
+        .save(performancesBasePath)
+
+      val commitCount = HoodieDataSourceHelpers.listCommitsSince(performancesFs, performancesBasePath, "000").size()
+      commitCount shouldBe 4
+
+      // read back data from hudi (using incremental view)
+      performancesCommitInstantTime3.isCompleted shouldBe true
+      for { commitTime <- performancesCommitInstantTime3.future } yield {
+        val hudiDf = spark.read
+          .format("com.uber.hoodie")
+          .option(DataSourceReadOptions.VIEW_TYPE_OPT_KEY, DataSourceReadOptions.VIEW_TYPE_INCREMENTAL_OPT_VAL)
+          .option(DataSourceReadOptions.BEGIN_INSTANTTIME_OPT_KEY, commitTime)
+          .load(performancesBasePath)
+
+        hudiDf.count() shouldBe insertDf.count()
+      }
+    }
+
+    "have ingested second half of ds_0001 x ds_0002 consistently" in {
+      val acquisitionsDf = spark.read
+        .format("com.uber.hoodie")
+        .load(acquisitionsBasePath + "/*/*/*")
+      val performancesDf = spark.read
+        .format("com.uber.hoodie")
+        .load(performancesBasePath + "/*/*/*")
+
+      val joinedDf = acquisitionsDf.join(performancesDf, acquisitionsDf("id") === performancesDf("id_2"), "inner")
+
+      joinedDf.count() shouldBe performancesDf.count()
+      performancesDf.count() shouldBe getPerformances.count()
 
       val a_ids = acquisitionsDf.select(acquisitionsDf("id")).distinct().collect().map(_.getString(0))
       val j_ids = joinedDf.select(joinedDf("id")).distinct().collect().map(_.getString(0))
