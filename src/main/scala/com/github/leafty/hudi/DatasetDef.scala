@@ -55,7 +55,7 @@ case class DatasetDef(name: String, primaryKey: String, mergeBy: String, locatio
       .format("com.uber.hoodie")
       .options(commonOpts)
       .options(this.asMap)
-      .option(DataSourceWriteOptions.OPERATION_OPT_KEY, DataSourceWriteOptions.UPSERT_OPERATION_OPT_VAL)
+      .option(DataSourceWriteOptions.OPERATION_OPT_KEY, DataSourceWriteOptions.INSERT_OPERATION_OPT_VAL)
       .mode(SaveMode.Append)
       .save(this.location.get)
 }
