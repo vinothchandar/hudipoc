@@ -39,9 +39,9 @@ abstract case class DatasetDef(name: String, rowKey: String, mergeByKey: String,
   /**
     *
     */
-  def hasNewCommits(implicit session: SparkSession): Boolean = {
+  def hasNewCommits(commitTimestamp: String)(implicit session: SparkSession): Boolean = {
     import DataSetDef._
-    HoodieDataSourceHelpers.hasNewCommits(getFs(location.get), location.get, "000")
+    HoodieDataSourceHelpers.hasNewCommits(getFs(location.get), location.get, commitTimestamp)
   }
 
   /**
@@ -55,11 +55,11 @@ abstract case class DatasetDef(name: String, rowKey: String, mergeByKey: String,
   /**
     *
     */
-  def listCommitsSince(implicit session: SparkSession): List[String] = {
+  def listCommitsSince(instantTimestamp: String)(implicit session: SparkSession): List[String] = {
     import DataSetDef._
 
     import scala.collection.JavaConverters._
-    HoodieDataSourceHelpers.listCommitsSince(getFs(location.get), location.get, "000").asScala.toList
+    HoodieDataSourceHelpers.listCommitsSince(getFs(location.get), location.get, instantTimestamp).asScala.toList
   }
 
   private val uberHoodieFormat = "com.uber.hoodie"

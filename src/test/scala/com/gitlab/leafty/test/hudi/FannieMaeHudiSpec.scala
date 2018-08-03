@@ -81,7 +81,9 @@ class FannieMaeHudiSpec extends AsyncBaseSpec {
 
       acquisitionsDs.writeReplace(df)
 
-      acquisitionsDs.hasNewCommits shouldBe true
+      acquisitionsDs.hasNewCommits("000") shouldBe true
+
+      acquisitionsDs.listCommitsSince("000").length shouldBe 1
 
       acquisitionsDs.read().count() shouldBe df.count()
     }
@@ -103,7 +105,7 @@ class FannieMaeHudiSpec extends AsyncBaseSpec {
 
       performancesCommitInstantTime1.success(performancesDs.latestCommit)
 
-      performancesDs.hasNewCommits shouldBe true
+      performancesDs.listCommitsSince("000").length shouldBe 1
 
       performancesDs.read().count() shouldBe insertDf.count()
     }
@@ -123,7 +125,7 @@ class FannieMaeHudiSpec extends AsyncBaseSpec {
 
       performancesCommitInstantTime2.success(performancesDs.latestCommit)
 
-      performancesDs.listCommitsSince.length shouldBe 2
+      performancesDs.listCommitsSince("000").length shouldBe 2
 
       // read back data from hudi (using incremental view)
       performancesCommitInstantTime1.isCompleted shouldBe true
@@ -158,7 +160,7 @@ class FannieMaeHudiSpec extends AsyncBaseSpec {
 
       acquisitionsDs.writeAppend(df)
 
-      acquisitionsDs.listCommitsSince.length shouldBe 2
+      acquisitionsDs.listCommitsSince("000").length shouldBe 2
 
       acquisitionsDs.read().count() shouldBe getAcquisitions.count()
     }
@@ -179,7 +181,7 @@ class FannieMaeHudiSpec extends AsyncBaseSpec {
 
       performancesCommitInstantTime3.success(performancesDs.latestCommit)
 
-      performancesDs.listCommitsSince.length shouldBe 3
+      performancesDs.listCommitsSince("000").length shouldBe 3
 
       // read back data from hudi (using incremental view)
       performancesCommitInstantTime2.isCompleted shouldBe true
@@ -200,7 +202,7 @@ class FannieMaeHudiSpec extends AsyncBaseSpec {
 
       performancesDs.writeUpsert(insertDf)
 
-      performancesDs.listCommitsSince.length shouldBe 4
+      performancesDs.listCommitsSince("000").length shouldBe 4
 
       // read back data from hudi (using incremental view)
       performancesCommitInstantTime3.isCompleted shouldBe true
@@ -215,7 +217,12 @@ class FannieMaeHudiSpec extends AsyncBaseSpec {
     }
 
     "have ingested second half of ds_0001 x ds_0002 consistently" in {
+
+      acquisitionsDs.listCommitsSince("000").length shouldBe 2
+
       val acquisitionsDf = acquisitionsDs.read()
+
+      performancesDs.listCommitsSince("000").length shouldBe 4
 
       val performancesDf = performancesDs.read()
 
