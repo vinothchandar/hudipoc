@@ -3,7 +3,7 @@ package com.github.leafty.hudi
 import com.uber.hoodie.common.util.FSUtils
 import com.uber.hoodie.{DataSourceWriteOptions, HoodieDataSourceHelpers}
 import com.uber.hoodie.config.HoodieWriteConfig
-import org.apache.spark.sql.SparkSession
+import org.apache.spark.sql.{DataFrame, SaveMode, SparkSession}
 
 
 /**
@@ -40,6 +40,24 @@ case class DatasetDef(name: String, primaryKey: String, mergeBy: String, locatio
     import scala.collection.JavaConverters._
     HoodieDataSourceHelpers.listCommitsSince(getFs(location.get), location.get,  "000").asScala.toList
   }
+
+  def writeReplace(df: DataFrame)(implicit commonOpts: Map[String, String]): Unit =
+      df.write
+      .format("com.uber.hoodie")
+      .options(commonOpts)
+      .options(this.asMap)
+      .option(DataSourceWriteOptions.OPERATION_OPT_KEY, DataSourceWriteOptions.INSERT_OPERATION_OPT_VAL)
+      .mode(SaveMode.Overwrite)
+      .save(this.location.get)
+
+  def writeAppend(df: DataFrame)(implicit commonOpts: Map[String, String]): Unit =
+      df.write
+      .format("com.uber.hoodie")
+      .options(commonOpts)
+      .options(this.asMap)
+      .option(DataSourceWriteOptions.OPERATION_OPT_KEY, DataSourceWriteOptions.UPSERT_OPERATION_OPT_VAL)
+      .mode(SaveMode.Append)
+      .save(this.location.get)
 }
 
 object DataSetDef {

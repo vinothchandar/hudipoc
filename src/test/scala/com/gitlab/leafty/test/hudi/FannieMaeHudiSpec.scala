@@ -51,7 +51,7 @@ class FannieMaeHudiSpec extends AsyncBaseSpec {
     }
   }
 
-  val commonOpts = Map(
+  lazy implicit val commonOpts = Map(
     "hoodie.insert.shuffle.parallelism" -> "4",
     "hoodie.upsert.shuffle.parallelism" -> "4",
     DataSourceWriteOptions.PARTITIONPATH_FIELD_OPT_KEY -> "partition"
@@ -82,14 +82,17 @@ class FannieMaeHudiSpec extends AsyncBaseSpec {
     val performancesCommitInstantTime3: Promise[String] = Promise()
 
     "ingest first half of 'acquisitions'" in {
+
       val (df, _) = getAcquisitionsSplit
-      df.write
-        .format("com.uber.hoodie")
-        .options(commonOpts)
-        .options(acquisitionsDs.asMap)
-        .option(DataSourceWriteOptions.OPERATION_OPT_KEY, DataSourceWriteOptions.INSERT_OPERATION_OPT_VAL)
-        .mode(SaveMode.Overwrite)
-        .save(acquisitionsDs.location.get)
+
+      acquisitionsDs.writeReplace(df)
+//      df.write
+//        .format("com.uber.hoodie")
+//        .options(commonOpts)
+//        .options(acquisitionsDs.asMap)
+//        .option(DataSourceWriteOptions.OPERATION_OPT_KEY, DataSourceWriteOptions.INSERT_OPERATION_OPT_VAL)
+//        .mode(SaveMode.Overwrite)
+//        .save(acquisitionsDs.location.get)
 
       val hasNewCommits = acquisitionsDs.hasNewCommits
       hasNewCommits shouldBe true
@@ -112,13 +115,15 @@ class FannieMaeHudiSpec extends AsyncBaseSpec {
 
       val emptyDF = spark.createDataFrame(spark.sparkContext.emptyRDD[Row], getPerformances.schema)
       val insertDf = dfs.fold(emptyDF){ (df1, df2) => df1.union(df2) }
-      insertDf.write
-        .format("com.uber.hoodie")
-        .options(commonOpts)
-        .options(performancesDs.asMap)
-        .option(DataSourceWriteOptions.OPERATION_OPT_KEY, DataSourceWriteOptions.INSERT_OPERATION_OPT_VAL)
-        .mode(SaveMode.Overwrite)
-        .save(performancesDs.location.get)
+
+      performancesDs.writeReplace(insertDf)
+//      insertDf.write
+//        .format("com.uber.hoodie")
+//        .options(commonOpts)
+//        .options(performancesDs.asMap)
+//        .option(DataSourceWriteOptions.OPERATION_OPT_KEY, DataSourceWriteOptions.INSERT_OPERATION_OPT_VAL)
+//        .mode(SaveMode.Overwrite)
+//        .save(performancesDs.location.get)
 
       performancesCommitInstantTime1.success(performancesDs.latestCommit)
 
@@ -143,13 +148,15 @@ class FannieMaeHudiSpec extends AsyncBaseSpec {
 
       val emptyDF = spark.createDataFrame(spark.sparkContext.emptyRDD[Row], getPerformances.schema)
       val insertDf = dfs.fold(emptyDF){ (df1, df2) => df1.union(df2) }
-      insertDf.write
-        .format("com.uber.hoodie")
-        .options(commonOpts)
-        .options(performancesDs.asMap)
-        .option(DataSourceWriteOptions.OPERATION_OPT_KEY, DataSourceWriteOptions.INSERT_OPERATION_OPT_VAL)
-        .mode(SaveMode.Append)
-        .save(performancesDs.location.get)
+
+      performancesDs.writeAppend(insertDf)
+//      insertDf.write
+//        .format("com.uber.hoodie")
+//        .options(commonOpts)
+//        .options(performancesDs.asMap)
+//        .option(DataSourceWriteOptions.OPERATION_OPT_KEY, DataSourceWriteOptions.INSERT_OPERATION_OPT_VAL)
+//        .mode(SaveMode.Append)
+//        .save(performancesDs.location.get)
 
       performancesCommitInstantTime2.success(performancesDs.latestCommit)
 
@@ -190,13 +197,15 @@ class FannieMaeHudiSpec extends AsyncBaseSpec {
 
     "ingest second half of 'acquisitions'" in {
       val (_, df) = getAcquisitionsSplit
-      df.write
-        .format("com.uber.hoodie")
-        .options(commonOpts)
-        .options(acquisitionsDs.asMap)
-        .option(DataSourceWriteOptions.OPERATION_OPT_KEY, DataSourceWriteOptions.INSERT_OPERATION_OPT_VAL)
-        .mode(SaveMode.Append)
-        .save(acquisitionsDs.location.get)
+
+      acquisitionsDs.writeAppend(df)
+//      df.write
+//        .format("com.uber.hoodie")
+//        .options(commonOpts)
+//        .options(acquisitionsDs.asMap)
+//        .option(DataSourceWriteOptions.OPERATION_OPT_KEY, DataSourceWriteOptions.INSERT_OPERATION_OPT_VAL)
+//        .mode(SaveMode.Append)
+//        .save(acquisitionsDs.location.get)
 
       val commitCount = acquisitionsDs.listCommitsSince.length
       commitCount shouldBe 2
@@ -219,13 +228,16 @@ class FannieMaeHudiSpec extends AsyncBaseSpec {
 
       val emptyDF = spark.createDataFrame(spark.sparkContext.emptyRDD[Row], getPerformances.schema)
       val insertDf = dfs.fold(emptyDF){ (df1, df2) => df1.union(df2) }
-      insertDf.write
-        .format("com.uber.hoodie")
-        .options(commonOpts)
-        .options(performancesDs.asMap)
-        .option(DataSourceWriteOptions.OPERATION_OPT_KEY, DataSourceWriteOptions.INSERT_OPERATION_OPT_VAL)
-        .mode(SaveMode.Append)
-        .save(performancesDs.location.get)
+
+      performancesDs.writeAppend(insertDf)
+//      insertDf.write
+//        .format("com.uber.hoodie")
+//        .options(commonOpts)
+//        .options(performancesDs.asMap)
+//        .option(DataSourceWriteOptions.OPERATION_OPT_KEY, DataSourceWriteOptions.INSERT_OPERATION_OPT_VAL)
+//        .mode(SaveMode.Append)
+//        .save(performancesDs.location.get)
+
 
       performancesCommitInstantTime3.success(performancesDs.latestCommit)
 
@@ -248,11 +260,13 @@ class FannieMaeHudiSpec extends AsyncBaseSpec {
     "ingest second half of 'performances' (2/2)" in {
       // Upsert all performances data
       val insertDf = getPerformances
+
+      //performancesDs.writeAppend(insertDf)
       insertDf.write
         .format("com.uber.hoodie")
         .options(commonOpts)
         .options(performancesDs.asMap)
-        .option(DataSourceWriteOptions.OPERATION_OPT_KEY, DataSourceWriteOptions.UPSERT_OPERATION_OPT_VAL)
+        .option(DataSourceWriteOptions.OPERATION_OPT_KEY, DataSourceWriteOptions.UPSERT_OPERATION_OPT_VAL) // #todo UPSERT only here or for all "appends"?
         .mode(SaveMode.Append)
         .save(performancesDs.location.get)
 
