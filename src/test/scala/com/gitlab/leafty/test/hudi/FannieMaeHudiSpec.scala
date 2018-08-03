@@ -1,8 +1,7 @@
 package com.gitlab.leafty.test.hudi
 
 import com.github.leafty.hudi.DatasetDef
-import com.uber.hoodie.common.util.FSUtils
-import com.uber.hoodie.{DataSourceReadOptions, DataSourceWriteOptions, HoodieDataSourceHelpers}
+import com.uber.hoodie.{DataSourceReadOptions, DataSourceWriteOptions}
 import org.apache.log4j.{Level, Logger}
 import org.apache.spark.sql.functions.{concat_ws, lit}
 import org.apache.spark.sql.{DataFrame, Row, SaveMode, SparkSession}
@@ -15,7 +14,7 @@ class FannieMaeHudiSpec extends AsyncBaseSpec {
   Logger.getLogger("org.apache").setLevel(Level.WARN)
   Logger.getLogger("com.uber.hoodie").setLevel(Level.WARN)
 
-  lazy val spark: SparkSession = getSparkSession
+  lazy implicit val spark: SparkSession = getSparkSession
 
   "test data sets" should {
     "contain acquisitions" in {
@@ -62,24 +61,21 @@ class FannieMaeHudiSpec extends AsyncBaseSpec {
     * How is [[DataSourceWriteOptions.PRECOMBINE_FIELD_OPT_KEY]] used exactly?
     * Is it for merging updates?
     */
-  val acquisitionsOpts = DatasetDef("acquisitions", "id", "start_date").asMap
+  val acquisitionsDs = DatasetDef("acquisitions", "id", "start_date", Some(tmpLocation))
 
     /**
       * #todo why use "id" for "acquisitionsOpts" and not use "id_2" here ?
       */
-  val performancesOpts = DatasetDef("performances", "_row_key", "curr_date").asMap
+  val performancesDs = DatasetDef("performances", "_row_key", "curr_date", Some(tmpLocation))
 
+
+  def tmpLocation : String = {
+    val folder = new TemporaryFolder()
+    folder.create()
+    folder.getRoot.getAbsolutePath
+  }
 
   "hudi" should {
-    val acquisitionsFolder = new TemporaryFolder()
-    acquisitionsFolder.create()
-    val acquisitionsBasePath = acquisitionsFolder.getRoot.getAbsolutePath
-    val acquisitionsFs = FSUtils.getFs(acquisitionsBasePath, spark.sparkContext.hadoopConfiguration)
-
-    val performancesFolder = new TemporaryFolder()
-    performancesFolder.create()
-    val performancesBasePath = performancesFolder.getRoot.getAbsolutePath
-    val performancesFs = FSUtils.getFs(performancesBasePath, spark.sparkContext.hadoopConfiguration)
 
     val performancesCommitInstantTime1: Promise[String] = Promise()
     val performancesCommitInstantTime2: Promise[String] = Promise()
@@ -90,18 +86,19 @@ class FannieMaeHudiSpec extends AsyncBaseSpec {
       df.write
         .format("com.uber.hoodie")
         .options(commonOpts)
-        .options(acquisitionsOpts)
+        .options(acquisitionsDs.asMap)
         .option(DataSourceWriteOptions.OPERATION_OPT_KEY, DataSourceWriteOptions.INSERT_OPERATION_OPT_VAL)
         .mode(SaveMode.Overwrite)
-        .save(acquisitionsBasePath)
+        .save(acquisitionsDs.location.get)
 
-      val hasNewCommits = HoodieDataSourceHelpers.hasNewCommits(acquisitionsFs, acquisitionsBasePath, "000")
+      val hasNewCommits = acquisitionsDs.hasNewCommits
       hasNewCommits shouldBe true
 
       // read back data from hudi
       val hudiDf = spark.read
         .format("com.uber.hoodie")
-        .load(acquisitionsBasePath + "/*/*/*")
+        .load(acquisitionsDs.location.get + "/*/*/*")
+
       hudiDf.count() shouldBe df.count()
     }
 
@@ -118,19 +115,21 @@ class FannieMaeHudiSpec extends AsyncBaseSpec {
       insertDf.write
         .format("com.uber.hoodie")
         .options(commonOpts)
-        .options(performancesOpts)
+        .options(performancesDs.asMap)
         .option(DataSourceWriteOptions.OPERATION_OPT_KEY, DataSourceWriteOptions.INSERT_OPERATION_OPT_VAL)
         .mode(SaveMode.Overwrite)
-        .save(performancesBasePath)
-      performancesCommitInstantTime1.success(HoodieDataSourceHelpers.latestCommit(performancesFs, performancesBasePath))
+        .save(performancesDs.location.get)
 
-      val hasNewCommits = HoodieDataSourceHelpers.hasNewCommits(performancesFs, performancesBasePath, "000")
+      performancesCommitInstantTime1.success(performancesDs.latestCommit)
+
+      val hasNewCommits = performancesDs.hasNewCommits
       hasNewCommits shouldBe true
 
       // read back data from hudi
       val hudiDf = spark.read
         .format("com.uber.hoodie")
-        .load(performancesBasePath + "/*/*/*")
+        .load(performancesDs.location.get + "/*/*/*")
+
       hudiDf.count() shouldBe insertDf.count()
     }
 
@@ -147,13 +146,14 @@ class FannieMaeHudiSpec extends AsyncBaseSpec {
       insertDf.write
         .format("com.uber.hoodie")
         .options(commonOpts)
-        .options(performancesOpts)
+        .options(performancesDs.asMap)
         .option(DataSourceWriteOptions.OPERATION_OPT_KEY, DataSourceWriteOptions.INSERT_OPERATION_OPT_VAL)
         .mode(SaveMode.Append)
-        .save(performancesBasePath)
-      performancesCommitInstantTime2.success(HoodieDataSourceHelpers.latestCommit(performancesFs, performancesBasePath))
+        .save(performancesDs.location.get)
 
-      val commitCount = HoodieDataSourceHelpers.listCommitsSince(performancesFs, performancesBasePath, "000").size()
+      performancesCommitInstantTime2.success(performancesDs.latestCommit)
+
+      val commitCount = performancesDs.listCommitsSince.length
       commitCount shouldBe 2
 
       // read back data from hudi (using incremental view)
@@ -163,7 +163,7 @@ class FannieMaeHudiSpec extends AsyncBaseSpec {
           .format("com.uber.hoodie")
           .option(DataSourceReadOptions.VIEW_TYPE_OPT_KEY, DataSourceReadOptions.VIEW_TYPE_INCREMENTAL_OPT_VAL)
           .option(DataSourceReadOptions.BEGIN_INSTANTTIME_OPT_KEY, commitTime)
-          .load(performancesBasePath)
+          .load(performancesDs.location.get)
 
         hudiDf.count() shouldBe insertDf.count()
       }
@@ -172,10 +172,11 @@ class FannieMaeHudiSpec extends AsyncBaseSpec {
     "have ingested first half of ds_0001 x ds_0002 consistently" in {
       val acquisitionsDf = spark.read
         .format("com.uber.hoodie")
-        .load(acquisitionsBasePath + "/*/*/*")
+        .load(acquisitionsDs.location.get + "/*/*/*")
+
       val performancesDf = spark.read
         .format("com.uber.hoodie")
-        .load(performancesBasePath + "/*/*/*")
+        .load(performancesDs.location.get + "/*/*/*")
 
       val joinedDf = acquisitionsDf.join(performancesDf, acquisitionsDf("id") === performancesDf("id_2"), "inner")
 
@@ -192,18 +193,19 @@ class FannieMaeHudiSpec extends AsyncBaseSpec {
       df.write
         .format("com.uber.hoodie")
         .options(commonOpts)
-        .options(acquisitionsOpts)
+        .options(acquisitionsDs.asMap)
         .option(DataSourceWriteOptions.OPERATION_OPT_KEY, DataSourceWriteOptions.INSERT_OPERATION_OPT_VAL)
         .mode(SaveMode.Append)
-        .save(acquisitionsBasePath)
+        .save(acquisitionsDs.location.get)
 
-      val commitCount = HoodieDataSourceHelpers.listCommitsSince(acquisitionsFs, acquisitionsBasePath, "000").size()
+      val commitCount = acquisitionsDs.listCommitsSince.length
       commitCount shouldBe 2
 
       // read back data from hudi
       val hudiDf = spark.read
         .format("com.uber.hoodie")
-        .load(acquisitionsBasePath + "/*/*/*")
+        .load(acquisitionsDs.location.get + "/*/*/*")
+
       hudiDf.count() shouldBe getAcquisitions.count()
     }
 
@@ -220,13 +222,14 @@ class FannieMaeHudiSpec extends AsyncBaseSpec {
       insertDf.write
         .format("com.uber.hoodie")
         .options(commonOpts)
-        .options(performancesOpts)
+        .options(performancesDs.asMap)
         .option(DataSourceWriteOptions.OPERATION_OPT_KEY, DataSourceWriteOptions.INSERT_OPERATION_OPT_VAL)
         .mode(SaveMode.Append)
-        .save(performancesBasePath)
-      performancesCommitInstantTime3.success(HoodieDataSourceHelpers.latestCommit(performancesFs, performancesBasePath))
+        .save(performancesDs.location.get)
 
-      val commitCount = HoodieDataSourceHelpers.listCommitsSince(performancesFs, performancesBasePath, "000").size()
+      performancesCommitInstantTime3.success(performancesDs.latestCommit)
+
+      val commitCount = performancesDs.listCommitsSince.length
       commitCount shouldBe 3
 
       // read back data from hudi (using incremental view)
@@ -236,7 +239,7 @@ class FannieMaeHudiSpec extends AsyncBaseSpec {
           .format("com.uber.hoodie")
           .option(DataSourceReadOptions.VIEW_TYPE_OPT_KEY, DataSourceReadOptions.VIEW_TYPE_INCREMENTAL_OPT_VAL)
           .option(DataSourceReadOptions.BEGIN_INSTANTTIME_OPT_KEY, commitTime)
-          .load(performancesBasePath)
+          .load(performancesDs.location.get)
 
         hudiDf.count() shouldBe insertDf.count()
       }
@@ -248,12 +251,12 @@ class FannieMaeHudiSpec extends AsyncBaseSpec {
       insertDf.write
         .format("com.uber.hoodie")
         .options(commonOpts)
-        .options(performancesOpts)
+        .options(performancesDs.asMap)
         .option(DataSourceWriteOptions.OPERATION_OPT_KEY, DataSourceWriteOptions.UPSERT_OPERATION_OPT_VAL)
         .mode(SaveMode.Append)
-        .save(performancesBasePath)
+        .save(performancesDs.location.get)
 
-      val commitCount = HoodieDataSourceHelpers.listCommitsSince(performancesFs, performancesBasePath, "000").size()
+      val commitCount = performancesDs.listCommitsSince.length
       commitCount shouldBe 4
 
       // read back data from hudi (using incremental view)
@@ -263,7 +266,7 @@ class FannieMaeHudiSpec extends AsyncBaseSpec {
           .format("com.uber.hoodie")
           .option(DataSourceReadOptions.VIEW_TYPE_OPT_KEY, DataSourceReadOptions.VIEW_TYPE_INCREMENTAL_OPT_VAL)
           .option(DataSourceReadOptions.BEGIN_INSTANTTIME_OPT_KEY, commitTime)
-          .load(performancesBasePath)
+          .load(performancesDs.location.get)
 
         hudiDf.count() shouldBe insertDf.count()
       }
@@ -272,10 +275,11 @@ class FannieMaeHudiSpec extends AsyncBaseSpec {
     "have ingested second half of ds_0001 x ds_0002 consistently" in {
       val acquisitionsDf = spark.read
         .format("com.uber.hoodie")
-        .load(acquisitionsBasePath + "/*/*/*")
+        .load(acquisitionsDs.location.get + "/*/*/*")
+
       val performancesDf = spark.read
         .format("com.uber.hoodie")
-        .load(performancesBasePath + "/*/*/*")
+        .load(performancesDs.location.get + "/*/*/*")
 
       val joinedDf = acquisitionsDf.join(performancesDf, acquisitionsDf("id") === performancesDf("id_2"), "inner")
 
