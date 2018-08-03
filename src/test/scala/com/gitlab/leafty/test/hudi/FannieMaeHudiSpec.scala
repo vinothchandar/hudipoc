@@ -280,7 +280,7 @@ class FannieMaeHudiSpec extends AsyncBaseSpec {
       .option("header", "true")
       .load(url.getPath)
 
-    acquisitionsDs.prepare(df)
+    acquisitionsDs.mapFromRaw(df)
   }
 
   def getPerformances: DataFrame = {
@@ -290,7 +290,7 @@ class FannieMaeHudiSpec extends AsyncBaseSpec {
       .option("header", "true")
       .load(url.getPath)
 
-    performancesDs.prepare(df)
+    performancesDs.mapFromRaw(df)
   }
 
   protected def getSparkSession: SparkSession = {

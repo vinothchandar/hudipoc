@@ -12,7 +12,7 @@ trait DatasetMapperFromRaw {
 
   def partitionColumn(df: DataFrame) : Column
 
-  def prepare(df: DataFrame) : DataFrame =
+  def mapFromRaw(df: DataFrame) : DataFrame =
     df.withColumn(HoodieKeys.PARTITION_KEY, partitionColumn(df))
       .withColumn(HoodieKeys.ROW_KEY, rowKeyColumn(df))
 }
