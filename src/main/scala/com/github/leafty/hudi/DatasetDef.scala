@@ -19,22 +19,34 @@ import org.apache.spark.sql.{DataFrame, SaveMode, SparkSession}
   */
 case class DatasetDef(name: String, primaryKey: String, mergeBy: String, location: Option[String] = None) {
 
-  def asMap: Map[String, String] = Map(
+  /**
+    *
+    */
+  /*protected */def asMap: Map[String, String] = Map(
     HoodieWriteConfig.TABLE_NAME -> name,
     DataSourceWriteOptions.RECORDKEY_FIELD_OPT_KEY -> primaryKey,
     DataSourceWriteOptions.PRECOMBINE_FIELD_OPT_KEY -> mergeBy
   )
 
+  /**
+    *
+    */
   def hasNewCommits(implicit session: SparkSession): Boolean = {
     import DataSetDef._
     HoodieDataSourceHelpers.hasNewCommits(getFs(location.get), location.get, "000")
   }
 
+  /**
+    *
+    */
   def latestCommit(implicit session: SparkSession): String = {
     import DataSetDef._
     HoodieDataSourceHelpers.latestCommit(getFs(location.get), location.get)
   }
 
+  /**
+    *
+    */
   def listCommitsSince(implicit session: SparkSession): List[String] = {
     import DataSetDef._
 
@@ -42,6 +54,9 @@ case class DatasetDef(name: String, primaryKey: String, mergeBy: String, locatio
     HoodieDataSourceHelpers.listCommitsSince(getFs(location.get), location.get, "000").asScala.toList
   }
 
+  /**
+    *
+    */
   def writeReplace(df: DataFrame)(implicit commonOpts: Map[String, String]): Unit =
     df.write
       .format("com.uber.hoodie")
@@ -51,6 +66,9 @@ case class DatasetDef(name: String, primaryKey: String, mergeBy: String, locatio
       .mode(SaveMode.Overwrite)
       .save(this.location.get)
 
+  /**
+    *
+    */
   def writeAppend(df: DataFrame)(implicit commonOpts: Map[String, String]): Unit =
     df.write
       .format("com.uber.hoodie")
@@ -60,6 +78,10 @@ case class DatasetDef(name: String, primaryKey: String, mergeBy: String, locatio
       .mode(SaveMode.Append)
       .save(this.location.get)
 
+  /**
+    *
+    * @param commitTime a real commit or will real all
+    */
   def read(commitTime: Option[String] = None)(implicit session: SparkSession): DataFrame = {
     commitTime match {
       case Some(c) ⇒ session.read
@@ -67,6 +89,7 @@ case class DatasetDef(name: String, primaryKey: String, mergeBy: String, locatio
         .option(DataSourceReadOptions.VIEW_TYPE_OPT_KEY, DataSourceReadOptions.VIEW_TYPE_INCREMENTAL_OPT_VAL)
         .option(DataSourceReadOptions.BEGIN_INSTANTTIME_OPT_KEY, c)
         .load(this.location.get)
+
       case None ⇒       session.read
         .format("com.uber.hoodie")
         .load(this.location.get + "/*/*/*")
