@@ -3,8 +3,14 @@ package com.github.leafty.hudi
 import com.uber.hoodie.common.util.FSUtils
 import com.uber.hoodie.config.HoodieWriteConfig
 import com.uber.hoodie.{DataSourceReadOptions, DataSourceWriteOptions, HoodieDataSourceHelpers}
-import org.apache.spark.sql.{DataFrame, SaveMode, SparkSession}
+import org.apache.spark.sql.{Column, DataFrame, SaveMode, SparkSession}
 
+object HoodieKeys {
+
+  val ROW_KEY : String = "_row_key"
+  val PARTITION_KEY: String = "partition"
+
+}
 
 /**
   * Defines a Hoodie dataaset
@@ -79,6 +85,19 @@ case class DatasetDef(name: String, primaryKey: String, mergeBy: String, locatio
       .save(this.location.get)
 
   /**
+    * #todo Is this api really needed or there is a better way?
+    * Why UPSERT only here or for all "appends"?
+    */
+  def writeUpsert(df: DataFrame)(implicit commonOpts: Map[String, String]): Unit =
+    df.write
+      .format("com.uber.hoodie")
+      .options(commonOpts)
+      .options(this.asMap)
+      .option(DataSourceWriteOptions.OPERATION_OPT_KEY, DataSourceWriteOptions.UPSERT_OPERATION_OPT_VAL)
+      .mode(SaveMode.Append)
+      .save(this.location.get)
+
+  /**
     *
     * @param commitTime a real commit or will real all
     */
@@ -95,6 +114,20 @@ case class DatasetDef(name: String, primaryKey: String, mergeBy: String, locatio
         .load(this.location.get + "/*/*/*")
      }
   }
+}
+
+/**
+  * Encapsulates mapping from raw to Hoodie format
+  */
+trait DatasetMapperFromRaw {
+
+  def rowKeyColumn(df: DataFrame) : Column
+
+  def partitionColumn(df: DataFrame) : Column
+
+  def prepare(df: DataFrame) : DataFrame =
+    df.withColumn(HoodieKeys.PARTITION_KEY, partitionColumn(df))
+      .withColumn(HoodieKeys.ROW_KEY, rowKeyColumn(df))
 }
 
 object DataSetDef {

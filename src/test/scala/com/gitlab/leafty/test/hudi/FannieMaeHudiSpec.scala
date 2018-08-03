@@ -1,14 +1,17 @@
 package com.gitlab.leafty.test.hudi
 
-import com.github.leafty.hudi.DatasetDef
+import com.github.leafty.hudi.{DatasetDef, DatasetMapperFromRaw, HoodieKeys}
 import com.uber.hoodie.DataSourceWriteOptions
 import org.apache.log4j.{Level, Logger}
-import org.apache.spark.sql.functions.{concat_ws, lit}
-import org.apache.spark.sql.{DataFrame, Row, SaveMode, SparkSession}
+import org.apache.spark.sql.{Column, DataFrame, Row, SparkSession}
 import org.junit.rules.TemporaryFolder
 
 import scala.concurrent.Promise
 
+
+/**
+  *
+  */
 class FannieMaeHudiSpec extends AsyncBaseSpec {
 
   Logger.getLogger("org.apache").setLevel(Level.WARN)
@@ -54,19 +57,30 @@ class FannieMaeHudiSpec extends AsyncBaseSpec {
   lazy implicit val commonOpts = Map(
     "hoodie.insert.shuffle.parallelism" -> "4",
     "hoodie.upsert.shuffle.parallelism" -> "4",
-    DataSourceWriteOptions.PARTITIONPATH_FIELD_OPT_KEY -> "partition"
+    DataSourceWriteOptions.PARTITIONPATH_FIELD_OPT_KEY -> HoodieKeys.PARTITION_KEY
   )
 
+  import org.apache.spark.sql.functions.{concat_ws, lit, col}
   /**
     * How is [[DataSourceWriteOptions.PRECOMBINE_FIELD_OPT_KEY]] used exactly?
     * Is it for merging updates?
     */
-  val acquisitionsDs = DatasetDef("acquisitions", "id", "start_date", Some(tmpLocation))
+  val acquisitionsDs = new DatasetDef("acquisitions", HoodieKeys.ROW_KEY, "start_date", Some(tmpLocation)) with DatasetMapperFromRaw {
 
-    /**
-      * #todo why use "id" for "acquisitionsOpts" and not use "id_2" here ?
-      */
-  val performancesDs = DatasetDef("performances", "_row_key", "curr_date", Some(tmpLocation))
+    override def rowKeyColumn(df: DataFrame): Column = col("id")
+
+    override def partitionColumn(df: DataFrame): Column = concat_ws("/", lit("seller"), df("seller"))
+  }
+
+  /**
+    *
+    */
+  val performancesDs = new DatasetDef("performances", HoodieKeys.ROW_KEY, "curr_date", Some(tmpLocation)) with DatasetMapperFromRaw {
+
+    override def rowKeyColumn(df: DataFrame): Column = concat_ws("--", df("id_2"), df("curr_date"))
+
+    override def partitionColumn(df: DataFrame): Column = concat_ws("/", lit("parent"), df("id_2"))
+  }
 
 
   def tmpLocation : String = {
@@ -87,15 +101,16 @@ class FannieMaeHudiSpec extends AsyncBaseSpec {
 
       acquisitionsDs.writeReplace(df)
 
-      val hasNewCommits = acquisitionsDs.hasNewCommits
-      hasNewCommits shouldBe true
+      acquisitionsDs.hasNewCommits shouldBe true
 
       acquisitionsDs.read().count() shouldBe df.count()
     }
 
     "ingest first half of 'performances' (1/2)" in {
+
       // Group 1 from acquisitions, 1st third
       val (acquisitionsDf, _) = getAcquisitionsSplit
+
       val ids = acquisitionsDf.select(acquisitionsDf("id")).distinct().collect().map(_.getString(0))
 
       val map = getPerformancesSplit
@@ -108,8 +123,7 @@ class FannieMaeHudiSpec extends AsyncBaseSpec {
 
       performancesCommitInstantTime1.success(performancesDs.latestCommit)
 
-      val hasNewCommits = performancesDs.hasNewCommits
-      hasNewCommits shouldBe true
+      performancesDs.hasNewCommits shouldBe true
 
       performancesDs.read().count() shouldBe insertDf.count()
     }
@@ -129,8 +143,7 @@ class FannieMaeHudiSpec extends AsyncBaseSpec {
 
       performancesCommitInstantTime2.success(performancesDs.latestCommit)
 
-      val commitCount = performancesDs.listCommitsSince.length
-      commitCount shouldBe 2
+      performancesDs.listCommitsSince.length shouldBe 2
 
       // read back data from hudi (using incremental view)
       performancesCommitInstantTime1.isCompleted shouldBe true
@@ -165,13 +178,13 @@ class FannieMaeHudiSpec extends AsyncBaseSpec {
 
       acquisitionsDs.writeAppend(df)
 
-      val commitCount = acquisitionsDs.listCommitsSince.length
-      commitCount shouldBe 2
+      acquisitionsDs.listCommitsSince.length shouldBe 2
 
       acquisitionsDs.read().count() shouldBe getAcquisitions.count()
     }
 
     "ingest second half of 'performances' (1/2)" in {
+
       // Group 2 from acquisitions, 1st third
       val (_, acquisitionsDf) = getAcquisitionsSplit
       val ids = acquisitionsDf.select(acquisitionsDf("id")).distinct().collect().map(_.getString(0))
@@ -186,8 +199,7 @@ class FannieMaeHudiSpec extends AsyncBaseSpec {
 
       performancesCommitInstantTime3.success(performancesDs.latestCommit)
 
-      val commitCount = performancesDs.listCommitsSince.length
-      commitCount shouldBe 3
+      performancesDs.listCommitsSince.length shouldBe 3
 
       // read back data from hudi (using incremental view)
       performancesCommitInstantTime2.isCompleted shouldBe true
@@ -206,17 +218,9 @@ class FannieMaeHudiSpec extends AsyncBaseSpec {
       // Upsert all performances data
       val insertDf = getPerformances
 
-      //performancesDs.writeAppend(insertDf)
-      insertDf.write
-        .format("com.uber.hoodie")
-        .options(commonOpts)
-        .options(performancesDs.asMap)
-        .option(DataSourceWriteOptions.OPERATION_OPT_KEY, DataSourceWriteOptions.UPSERT_OPERATION_OPT_VAL) // #todo UPSERT only here or for all "appends"?
-        .mode(SaveMode.Append)
-        .save(performancesDs.location.get)
+      performancesDs.writeUpsert(insertDf)
 
-      val commitCount = performancesDs.listCommitsSince.length
-      commitCount shouldBe 4
+      performancesDs.listCommitsSince.length shouldBe 4
 
       // read back data from hudi (using incremental view)
       performancesCommitInstantTime3.isCompleted shouldBe true
@@ -300,9 +304,7 @@ class FannieMaeHudiSpec extends AsyncBaseSpec {
       .option("header", "true")
       .load(url.getPath)
 
-    // Add partition column
-    val partitionColumn = concat_ws("/", lit("seller"), df("seller"))
-    df.withColumn("partition", partitionColumn)
+    acquisitionsDs.prepare(df)
   }
 
   def getPerformances: DataFrame = {
@@ -312,14 +314,7 @@ class FannieMaeHudiSpec extends AsyncBaseSpec {
       .option("header", "true")
       .load(url.getPath)
 
-    // Add partition column
-    val partitionColumn = concat_ws("/", lit("parent"), df("id_2"))
-
-    // Add row key
-    val rowKeyColumn = concat_ws("--", df("id_2"), df("curr_date"))
-
-    df.withColumn("partition", partitionColumn)
-      .withColumn("_row_key", rowKeyColumn)
+    performancesDs.prepare(df)
   }
 
   protected def getSparkSession: SparkSession = {
