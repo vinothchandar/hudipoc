@@ -3,7 +3,7 @@ package com.github.leafty.hudi
 import com.uber.hoodie.common.util.FSUtils
 import com.uber.hoodie.config.HoodieWriteConfig
 import com.uber.hoodie.{DataSourceReadOptions, DataSourceWriteOptions, HoodieDataSourceHelpers}
-import org.apache.spark.sql.{Column, DataFrame, SaveMode, SparkSession}
+import org.apache.spark.sql.{DataFrame, SaveMode, SparkSession}
 
 object HoodieKeys {
 
@@ -23,12 +23,13 @@ object HoodieKeys {
   * @param mergeBy name of field used to merge updates (records with same [[primaryKey]]) in different ... updates
   * @see [[DataSourceWriteOptions.PRECOMBINE_FIELD_OPT_KEY]]
   */
-case class DatasetDef(name: String, primaryKey: String, mergeBy: String, location: Option[String] = None) {
+abstract case class DatasetDef(name: String, primaryKey: String, mergeBy: String, location: Option[String] = None) {
 
   /**
-    *
+    * #todo How is [[DataSourceWriteOptions.PRECOMBINE_FIELD_OPT_KEY]] used exactly?
+    * Is it for merging updates?
     */
-  /*protected */def asMap: Map[String, String] = Map(
+  protected def asMap: Map[String, String] = Map(
     HoodieWriteConfig.TABLE_NAME -> name,
     DataSourceWriteOptions.RECORDKEY_FIELD_OPT_KEY -> primaryKey,
     DataSourceWriteOptions.PRECOMBINE_FIELD_OPT_KEY -> mergeBy
@@ -116,21 +117,13 @@ case class DatasetDef(name: String, primaryKey: String, mergeBy: String, locatio
   }
 }
 
-/**
-  * Encapsulates mapping from raw to Hoodie format
-  */
-trait DatasetMapperFromRaw {
-
-  def rowKeyColumn(df: DataFrame) : Column
-
-  def partitionColumn(df: DataFrame) : Column
-
-  def prepare(df: DataFrame) : DataFrame =
-    df.withColumn(HoodieKeys.PARTITION_KEY, partitionColumn(df))
-      .withColumn(HoodieKeys.ROW_KEY, rowKeyColumn(df))
-}
-
 object DataSetDef {
+
+  lazy implicit val commonOpts = Map(
+    "hoodie.insert.shuffle.parallelism" -> "4",
+    "hoodie.upsert.shuffle.parallelism" -> "4",
+    DataSourceWriteOptions.PARTITIONPATH_FIELD_OPT_KEY -> HoodieKeys.PARTITION_KEY
+  )
 
   def getFs(path: String)(implicit session: SparkSession) = FSUtils.getFs(path, session.sparkContext.hadoopConfiguration)
 }

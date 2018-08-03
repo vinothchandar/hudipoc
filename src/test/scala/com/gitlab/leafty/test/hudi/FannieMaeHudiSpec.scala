@@ -1,13 +1,11 @@
 package com.gitlab.leafty.test.hudi
 
-import com.github.leafty.hudi.{DatasetDef, DatasetMapperFromRaw, HoodieKeys}
-import com.uber.hoodie.DataSourceWriteOptions
+import com.github.leafty.hudi._
 import org.apache.log4j.{Level, Logger}
-import org.apache.spark.sql.{Column, DataFrame, Row, SparkSession}
+import org.apache.spark.sql.{DataFrame, Row, SparkSession}
 import org.junit.rules.TemporaryFolder
 
 import scala.concurrent.Promise
-
 
 /**
   *
@@ -54,33 +52,9 @@ class FannieMaeHudiSpec extends AsyncBaseSpec {
     }
   }
 
-  lazy implicit val commonOpts = Map(
-    "hoodie.insert.shuffle.parallelism" -> "4",
-    "hoodie.upsert.shuffle.parallelism" -> "4",
-    DataSourceWriteOptions.PARTITIONPATH_FIELD_OPT_KEY -> HoodieKeys.PARTITION_KEY
-  )
+  val acquisitionsDs = new AcquisitionsDatasetDef(Some(tmpLocation))
 
-  import org.apache.spark.sql.functions.{concat_ws, lit, col}
-  /**
-    * How is [[DataSourceWriteOptions.PRECOMBINE_FIELD_OPT_KEY]] used exactly?
-    * Is it for merging updates?
-    */
-  val acquisitionsDs = new DatasetDef("acquisitions", HoodieKeys.ROW_KEY, "start_date", Some(tmpLocation)) with DatasetMapperFromRaw {
-
-    override def rowKeyColumn(df: DataFrame): Column = col("id")
-
-    override def partitionColumn(df: DataFrame): Column = concat_ws("/", lit("seller"), df("seller"))
-  }
-
-  /**
-    *
-    */
-  val performancesDs = new DatasetDef("performances", HoodieKeys.ROW_KEY, "curr_date", Some(tmpLocation)) with DatasetMapperFromRaw {
-
-    override def rowKeyColumn(df: DataFrame): Column = concat_ws("--", df("id_2"), df("curr_date"))
-
-    override def partitionColumn(df: DataFrame): Column = concat_ws("/", lit("parent"), df("id_2"))
-  }
+  val performancesDs = new PerformancesDatasetDef(Some(tmpLocation))
 
 
   def tmpLocation : String = {
@@ -88,6 +62,8 @@ class FannieMaeHudiSpec extends AsyncBaseSpec {
     folder.create()
     folder.getRoot.getAbsolutePath
   }
+
+  import DataSetDef._
 
   "hudi" should {
 
