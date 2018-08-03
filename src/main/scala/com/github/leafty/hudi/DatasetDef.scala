@@ -1,7 +1,7 @@
 package com.github.leafty.hudi
 
 import com.uber.hoodie.common.util.FSUtils
-import com.uber.hoodie.{DataSourceWriteOptions, HoodieDataSourceHelpers}
+import com.uber.hoodie.{DataSourceReadOptions, DataSourceWriteOptions, HoodieDataSourceHelpers}
 import com.uber.hoodie.config.HoodieWriteConfig
 import org.apache.spark.sql.{DataFrame, SaveMode, SparkSession}
 
@@ -58,6 +58,15 @@ case class DatasetDef(name: String, primaryKey: String, mergeBy: String, locatio
       .option(DataSourceWriteOptions.OPERATION_OPT_KEY, DataSourceWriteOptions.INSERT_OPERATION_OPT_VAL)
       .mode(SaveMode.Append)
       .save(this.location.get)
+
+  def read(commitTime: String)(implicit session: SparkSession) : DataFrame  = {
+      session.read
+      .format("com.uber.hoodie")
+      .option(DataSourceReadOptions.VIEW_TYPE_OPT_KEY, DataSourceReadOptions.VIEW_TYPE_INCREMENTAL_OPT_VAL)
+      .option(DataSourceReadOptions.BEGIN_INSTANTTIME_OPT_KEY, commitTime)
+      .load(this.location.get)
+
+  }
 }
 
 object DataSetDef {

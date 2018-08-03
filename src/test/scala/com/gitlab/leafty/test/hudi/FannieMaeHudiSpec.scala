@@ -1,7 +1,7 @@
 package com.gitlab.leafty.test.hudi
 
 import com.github.leafty.hudi.DatasetDef
-import com.uber.hoodie.{DataSourceReadOptions, DataSourceWriteOptions}
+import com.uber.hoodie.DataSourceWriteOptions
 import org.apache.log4j.{Level, Logger}
 import org.apache.spark.sql.functions.{concat_ws, lit}
 import org.apache.spark.sql.{DataFrame, Row, SaveMode, SparkSession}
@@ -86,13 +86,6 @@ class FannieMaeHudiSpec extends AsyncBaseSpec {
       val (df, _) = getAcquisitionsSplit
 
       acquisitionsDs.writeReplace(df)
-//      df.write
-//        .format("com.uber.hoodie")
-//        .options(commonOpts)
-//        .options(acquisitionsDs.asMap)
-//        .option(DataSourceWriteOptions.OPERATION_OPT_KEY, DataSourceWriteOptions.INSERT_OPERATION_OPT_VAL)
-//        .mode(SaveMode.Overwrite)
-//        .save(acquisitionsDs.location.get)
 
       val hasNewCommits = acquisitionsDs.hasNewCommits
       hasNewCommits shouldBe true
@@ -117,13 +110,6 @@ class FannieMaeHudiSpec extends AsyncBaseSpec {
       val insertDf = dfs.fold(emptyDF){ (df1, df2) => df1.union(df2) }
 
       performancesDs.writeReplace(insertDf)
-//      insertDf.write
-//        .format("com.uber.hoodie")
-//        .options(commonOpts)
-//        .options(performancesDs.asMap)
-//        .option(DataSourceWriteOptions.OPERATION_OPT_KEY, DataSourceWriteOptions.INSERT_OPERATION_OPT_VAL)
-//        .mode(SaveMode.Overwrite)
-//        .save(performancesDs.location.get)
 
       performancesCommitInstantTime1.success(performancesDs.latestCommit)
 
@@ -150,13 +136,6 @@ class FannieMaeHudiSpec extends AsyncBaseSpec {
       val insertDf = dfs.fold(emptyDF){ (df1, df2) => df1.union(df2) }
 
       performancesDs.writeAppend(insertDf)
-//      insertDf.write
-//        .format("com.uber.hoodie")
-//        .options(commonOpts)
-//        .options(performancesDs.asMap)
-//        .option(DataSourceWriteOptions.OPERATION_OPT_KEY, DataSourceWriteOptions.INSERT_OPERATION_OPT_VAL)
-//        .mode(SaveMode.Append)
-//        .save(performancesDs.location.get)
 
       performancesCommitInstantTime2.success(performancesDs.latestCommit)
 
@@ -165,12 +144,12 @@ class FannieMaeHudiSpec extends AsyncBaseSpec {
 
       // read back data from hudi (using incremental view)
       performancesCommitInstantTime1.isCompleted shouldBe true
-      for { commitTime <- performancesCommitInstantTime1.future } yield {
-        val hudiDf = spark.read
-          .format("com.uber.hoodie")
-          .option(DataSourceReadOptions.VIEW_TYPE_OPT_KEY, DataSourceReadOptions.VIEW_TYPE_INCREMENTAL_OPT_VAL)
-          .option(DataSourceReadOptions.BEGIN_INSTANTTIME_OPT_KEY, commitTime)
-          .load(performancesDs.location.get)
+      for {
+        commitTime <- performancesCommitInstantTime1.future
+
+        hudiDf = performancesDs.read(commitTime)
+
+      } yield {
 
         hudiDf.count() shouldBe insertDf.count()
       }
@@ -199,13 +178,6 @@ class FannieMaeHudiSpec extends AsyncBaseSpec {
       val (_, df) = getAcquisitionsSplit
 
       acquisitionsDs.writeAppend(df)
-//      df.write
-//        .format("com.uber.hoodie")
-//        .options(commonOpts)
-//        .options(acquisitionsDs.asMap)
-//        .option(DataSourceWriteOptions.OPERATION_OPT_KEY, DataSourceWriteOptions.INSERT_OPERATION_OPT_VAL)
-//        .mode(SaveMode.Append)
-//        .save(acquisitionsDs.location.get)
 
       val commitCount = acquisitionsDs.listCommitsSince.length
       commitCount shouldBe 2
@@ -230,14 +202,6 @@ class FannieMaeHudiSpec extends AsyncBaseSpec {
       val insertDf = dfs.fold(emptyDF){ (df1, df2) => df1.union(df2) }
 
       performancesDs.writeAppend(insertDf)
-//      insertDf.write
-//        .format("com.uber.hoodie")
-//        .options(commonOpts)
-//        .options(performancesDs.asMap)
-//        .option(DataSourceWriteOptions.OPERATION_OPT_KEY, DataSourceWriteOptions.INSERT_OPERATION_OPT_VAL)
-//        .mode(SaveMode.Append)
-//        .save(performancesDs.location.get)
-
 
       performancesCommitInstantTime3.success(performancesDs.latestCommit)
 
@@ -246,12 +210,12 @@ class FannieMaeHudiSpec extends AsyncBaseSpec {
 
       // read back data from hudi (using incremental view)
       performancesCommitInstantTime2.isCompleted shouldBe true
-      for { commitTime <- performancesCommitInstantTime2.future } yield {
-        val hudiDf = spark.read
-          .format("com.uber.hoodie")
-          .option(DataSourceReadOptions.VIEW_TYPE_OPT_KEY, DataSourceReadOptions.VIEW_TYPE_INCREMENTAL_OPT_VAL)
-          .option(DataSourceReadOptions.BEGIN_INSTANTTIME_OPT_KEY, commitTime)
-          .load(performancesDs.location.get)
+
+      for {
+        commitTime <- performancesCommitInstantTime2.future
+        hudiDf = performancesDs.read(commitTime)
+
+      } yield {
 
         hudiDf.count() shouldBe insertDf.count()
       }
@@ -275,12 +239,11 @@ class FannieMaeHudiSpec extends AsyncBaseSpec {
 
       // read back data from hudi (using incremental view)
       performancesCommitInstantTime3.isCompleted shouldBe true
-      for { commitTime <- performancesCommitInstantTime3.future } yield {
-        val hudiDf = spark.read
-          .format("com.uber.hoodie")
-          .option(DataSourceReadOptions.VIEW_TYPE_OPT_KEY, DataSourceReadOptions.VIEW_TYPE_INCREMENTAL_OPT_VAL)
-          .option(DataSourceReadOptions.BEGIN_INSTANTTIME_OPT_KEY, commitTime)
-          .load(performancesDs.location.get)
+      for {
+        commitTime <- performancesCommitInstantTime3.future
+        hudiDf = performancesDs.read(commitTime)
+
+      } yield {
 
         hudiDf.count() shouldBe insertDf.count()
       }
