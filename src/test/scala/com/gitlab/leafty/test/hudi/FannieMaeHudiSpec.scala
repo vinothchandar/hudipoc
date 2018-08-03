@@ -90,10 +90,7 @@ class FannieMaeHudiSpec extends AsyncBaseSpec {
       val hasNewCommits = acquisitionsDs.hasNewCommits
       hasNewCommits shouldBe true
 
-      // read back data from hudi
-      val hudiDf = acquisitionsDs.read()
-
-      hudiDf.count() shouldBe df.count()
+      acquisitionsDs.read().count() shouldBe df.count()
     }
 
     "ingest first half of 'performances' (1/2)" in {
@@ -114,10 +111,7 @@ class FannieMaeHudiSpec extends AsyncBaseSpec {
       val hasNewCommits = performancesDs.hasNewCommits
       hasNewCommits shouldBe true
 
-      // read back data from hudi
-      val hudiDf = performancesDs.read()
-
-      hudiDf.count() shouldBe insertDf.count()
+      performancesDs.read().count() shouldBe insertDf.count()
     }
 
     "ingest first half of 'performances' (2/2)" in {
@@ -174,10 +168,7 @@ class FannieMaeHudiSpec extends AsyncBaseSpec {
       val commitCount = acquisitionsDs.listCommitsSince.length
       commitCount shouldBe 2
 
-      // read back data from hudi
-      val hudiDf = acquisitionsDs.read()
-
-      hudiDf.count() shouldBe getAcquisitions.count()
+      acquisitionsDs.read().count() shouldBe getAcquisitions.count()
     }
 
     "ingest second half of 'performances' (1/2)" in {
