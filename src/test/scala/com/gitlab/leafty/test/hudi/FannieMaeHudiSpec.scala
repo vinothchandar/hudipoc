@@ -1,17 +1,13 @@
 package com.gitlab.leafty.test.hudi
 
-import com.uber.hoodie.common.HoodieTestDataGenerator
+import com.github.leafty.hudi.DatasetDef
 import com.uber.hoodie.common.util.FSUtils
-import com.uber.hoodie.config.HoodieWriteConfig
 import com.uber.hoodie.{DataSourceReadOptions, DataSourceWriteOptions, HoodieDataSourceHelpers}
 import org.apache.log4j.{Level, Logger}
-import org.apache.spark.sql.functions.concat_ws
-import org.apache.spark.sql.functions.lit
-import org.apache.spark.sql.types.{LongType, StructField, StructType}
+import org.apache.spark.sql.functions.{concat_ws, lit}
 import org.apache.spark.sql.{DataFrame, Row, SaveMode, SparkSession}
 import org.junit.rules.TemporaryFolder
-import org.scalatest.BeforeAndAfterAll
-import scala.util.control.NonFatal
+
 import scala.concurrent.Promise
 
 class FannieMaeHudiSpec extends AsyncBaseSpec {
@@ -20,8 +16,6 @@ class FannieMaeHudiSpec extends AsyncBaseSpec {
   Logger.getLogger("com.uber.hoodie").setLevel(Level.WARN)
 
   lazy val spark: SparkSession = getSparkSession
-
-  import spark.implicits._
 
   "test data sets" should {
     "contain acquisitions" in {
@@ -64,17 +58,17 @@ class FannieMaeHudiSpec extends AsyncBaseSpec {
     DataSourceWriteOptions.PARTITIONPATH_FIELD_OPT_KEY -> "partition"
   )
 
-  val acquisitionsOpts = Map(
-    DataSourceWriteOptions.RECORDKEY_FIELD_OPT_KEY -> "id",
-    DataSourceWriteOptions.PRECOMBINE_FIELD_OPT_KEY -> "start_date",
-    HoodieWriteConfig.TABLE_NAME -> "acquisitions"
-  )
+  /**
+    * How is [[DataSourceWriteOptions.PRECOMBINE_FIELD_OPT_KEY]] used exactly?
+    * Is it for merging updates?
+    */
+  val acquisitionsOpts = DatasetDef("acquisitions", "id", "start_date").asMap
 
-  val performancesOpts = Map(
-    DataSourceWriteOptions.RECORDKEY_FIELD_OPT_KEY -> "_row_key",
-    DataSourceWriteOptions.PRECOMBINE_FIELD_OPT_KEY -> "curr_date",
-    HoodieWriteConfig.TABLE_NAME -> "performances"
-  )
+    /**
+      * #todo why use "id" for "acquisitionsOpts" and not use "id_2" here ?
+      */
+  val performancesOpts = DatasetDef("performances", "_row_key", "curr_date").asMap
+
 
   "hudi" should {
     val acquisitionsFolder = new TemporaryFolder()
