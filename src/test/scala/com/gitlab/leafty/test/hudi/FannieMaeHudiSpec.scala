@@ -91,9 +91,7 @@ class FannieMaeHudiSpec extends AsyncBaseSpec {
       hasNewCommits shouldBe true
 
       // read back data from hudi
-      val hudiDf = spark.read
-        .format("com.uber.hoodie")
-        .load(acquisitionsDs.location.get + "/*/*/*")
+      val hudiDf = acquisitionsDs.read()
 
       hudiDf.count() shouldBe df.count()
     }
@@ -117,9 +115,7 @@ class FannieMaeHudiSpec extends AsyncBaseSpec {
       hasNewCommits shouldBe true
 
       // read back data from hudi
-      val hudiDf = spark.read
-        .format("com.uber.hoodie")
-        .load(performancesDs.location.get + "/*/*/*")
+      val hudiDf = performancesDs.read()
 
       hudiDf.count() shouldBe insertDf.count()
     }
@@ -147,7 +143,7 @@ class FannieMaeHudiSpec extends AsyncBaseSpec {
       for {
         commitTime <- performancesCommitInstantTime1.future
 
-        hudiDf = performancesDs.read(commitTime)
+        hudiDf = performancesDs.read(Some(commitTime))
 
       } yield {
 
@@ -156,13 +152,9 @@ class FannieMaeHudiSpec extends AsyncBaseSpec {
     }
 
     "have ingested first half of ds_0001 x ds_0002 consistently" in {
-      val acquisitionsDf = spark.read
-        .format("com.uber.hoodie")
-        .load(acquisitionsDs.location.get + "/*/*/*")
+      val acquisitionsDf = acquisitionsDs.read()
 
-      val performancesDf = spark.read
-        .format("com.uber.hoodie")
-        .load(performancesDs.location.get + "/*/*/*")
+      val performancesDf = performancesDs.read()
 
       val joinedDf = acquisitionsDf.join(performancesDf, acquisitionsDf("id") === performancesDf("id_2"), "inner")
 
@@ -183,9 +175,7 @@ class FannieMaeHudiSpec extends AsyncBaseSpec {
       commitCount shouldBe 2
 
       // read back data from hudi
-      val hudiDf = spark.read
-        .format("com.uber.hoodie")
-        .load(acquisitionsDs.location.get + "/*/*/*")
+      val hudiDf = acquisitionsDs.read()
 
       hudiDf.count() shouldBe getAcquisitions.count()
     }
@@ -213,7 +203,7 @@ class FannieMaeHudiSpec extends AsyncBaseSpec {
 
       for {
         commitTime <- performancesCommitInstantTime2.future
-        hudiDf = performancesDs.read(commitTime)
+        hudiDf = performancesDs.read(Some(commitTime))
 
       } yield {
 
@@ -241,7 +231,7 @@ class FannieMaeHudiSpec extends AsyncBaseSpec {
       performancesCommitInstantTime3.isCompleted shouldBe true
       for {
         commitTime <- performancesCommitInstantTime3.future
-        hudiDf = performancesDs.read(commitTime)
+        hudiDf = performancesDs.read(Some(commitTime))
 
       } yield {
 
@@ -250,13 +240,9 @@ class FannieMaeHudiSpec extends AsyncBaseSpec {
     }
 
     "have ingested second half of ds_0001 x ds_0002 consistently" in {
-      val acquisitionsDf = spark.read
-        .format("com.uber.hoodie")
-        .load(acquisitionsDs.location.get + "/*/*/*")
+      val acquisitionsDf = acquisitionsDs.read()
 
-      val performancesDf = spark.read
-        .format("com.uber.hoodie")
-        .load(performancesDs.location.get + "/*/*/*")
+      val performancesDf = performancesDs.read()
 
       val joinedDf = acquisitionsDf.join(performancesDf, acquisitionsDf("id") === performancesDf("id_2"), "inner")
 
