@@ -13,6 +13,8 @@ import scala.concurrent.Promise
   */
 class FannieMaeHudiSpec extends AsyncBaseSpec {
 
+  lazy val log = Logger.getLogger("hudi.test")
+
   Logger.getLogger("org.apache").setLevel(Level.WARN)
   Logger.getLogger("com.uber.hoodie").setLevel(Level.WARN)
 
@@ -34,15 +36,17 @@ class FannieMaeHudiSpec extends AsyncBaseSpec {
     }
 
     "contain acquisitions splits" in {
-      val (df1, df2) = getAcquisitionsSplit
-      df1.columns should contain theSameElementsAs getAcquisitions.columns
-      df2.columns should contain theSameElementsAs getAcquisitions.columns
-      df1.count() shouldBe 4
-      df2.count() shouldBe 4
+      val dfs = getAcquisitions_2Split
+
+      dfs(0).columns should contain theSameElementsAs getAcquisitions.columns
+      dfs(1).columns should contain theSameElementsAs getAcquisitions.columns
+
+      dfs(0).count() shouldBe 4
+      dfs(1).count() shouldBe 4
     }
 
     "contain performances splits" in {
-      val map = getPerformancesSplit
+      val map = getPerformances_3Split
       map should have size 8
 
       // row counts from each csv file
@@ -59,15 +63,16 @@ class FannieMaeHudiSpec extends AsyncBaseSpec {
 
   val performancesDs = new PerformancesDatasetDef(Some(tmpLocation))
 
-
   def tmpLocation: String = {
     val folder = new TemporaryFolder()
     folder.create()
     folder.getRoot.getAbsolutePath
   }
 
-  import DataSetDef._
+  def getIds(df: DataFrame, id: String) : Array[String] =
+    df.select(df(id)).distinct().collect().map(_.getString(0))
 
+  import DataSetDef._
 
   "hudi" should {
 
@@ -77,7 +82,7 @@ class FannieMaeHudiSpec extends AsyncBaseSpec {
 
     "ingest first half of 'acquisitions'" in {
 
-      val (df, _) = getAcquisitionsSplit
+      val df = getAcquisitions_2Split(0)
 
       acquisitionsDs.writeReplace(df)
 
@@ -91,15 +96,18 @@ class FannieMaeHudiSpec extends AsyncBaseSpec {
     "ingest first half of 'performances' (1/2)" in {
 
       // Group 1 from acquisitions, 1st third
-      val (acquisitionsDf, _) = getAcquisitionsSplit
+      val acquisitionsDf = getAcquisitions_2Split(0)
 
-      val ids = acquisitionsDf.select(acquisitionsDf("id")).distinct().collect().map(_.getString(0))
+      val ids = getIds(acquisitionsDf, "id")
 
-      val map = getPerformancesSplit
+      val map = getPerformances_3Split
       val dfs = for {id <- ids} yield map(id)._1
 
       val emptyDF = spark.createDataFrame(spark.sparkContext.emptyRDD[Row], getPerformances.schema)
       val insertDf = dfs.fold(emptyDF) { (df1, df2) => df1.union(df2) }
+
+      log.info(s"""For `acquisitions` ${ids.mkString(", ")}
+           ingest `performances` ${getIds(insertDf, "id_2").mkString(", ")}""".stripMargin)
 
       performancesDs.writeReplace(insertDf)
 
@@ -112,14 +120,17 @@ class FannieMaeHudiSpec extends AsyncBaseSpec {
 
     "ingest first half of 'performances' (2/2)" in {
       // Group 1 from acquisitions, 2nd third
-      val (acquisitionsDf, _) = getAcquisitionsSplit
-      val ids = acquisitionsDf.select(acquisitionsDf("id")).distinct().collect().map(_.getString(0))
+      val acquisitionsDf = getAcquisitions_2Split(0)
+      val ids = getIds(acquisitionsDf, "id")
 
-      val map = getPerformancesSplit
+      val map = getPerformances_3Split
       val dfs = for {id <- ids} yield map(id)._2
 
       val emptyDF = spark.createDataFrame(spark.sparkContext.emptyRDD[Row], getPerformances.schema)
       val insertDf = dfs.fold(emptyDF) { (df1, df2) => df1.union(df2) }
+
+      log.info(s"""For `acquisitions` ${ids.mkString(", ")}
+           ingest `performances` ${getIds(insertDf, "id_2").mkString(", ")}""".stripMargin)
 
       performancesDs.writeAppend(insertDf)
 
@@ -128,7 +139,7 @@ class FannieMaeHudiSpec extends AsyncBaseSpec {
       performancesDs.listCommitsSince("000").length shouldBe 2
 
       // read back data from hudi (using incremental view)
-      performancesCommitInstantTime1.isCompleted shouldBe true
+      //performancesCommitInstantTime1.isCompleted shouldBe true
       for {
         commitTime <- performancesCommitInstantTime1.future
 
@@ -149,14 +160,14 @@ class FannieMaeHudiSpec extends AsyncBaseSpec {
 
       joinedDf.count() shouldBe performancesDf.count()
 
-      val a_ids = acquisitionsDf.select(acquisitionsDf("id")).distinct().collect().map(_.getString(0))
-      val j_ids = joinedDf.select(joinedDf("id")).distinct().collect().map(_.getString(0))
+      val a_ids = getIds(acquisitionsDf, "id")
+      val j_ids = getIds(joinedDf, "id")
 
       a_ids should contain theSameElementsAs j_ids
     }
 
     "ingest second half of 'acquisitions'" in {
-      val (_, df) = getAcquisitionsSplit
+      val df = getAcquisitions_2Split(1)
 
       acquisitionsDs.writeAppend(df)
 
@@ -168,14 +179,17 @@ class FannieMaeHudiSpec extends AsyncBaseSpec {
     "ingest second half of 'performances' (1/2)" in {
 
       // Group 2 from acquisitions, 1st third
-      val (_, acquisitionsDf) = getAcquisitionsSplit
-      val ids = acquisitionsDf.select(acquisitionsDf("id")).distinct().collect().map(_.getString(0))
+      val acquisitionsDf = getAcquisitions_2Split(1)
+      val ids = getIds(acquisitionsDf, "id")
 
-      val map = getPerformancesSplit
-      val dfs = for {id <- ids} yield map(id)._1
+      val map = getPerformances_3Split
+      val dfs = for {id <- ids} yield map(id)._3
 
       val emptyDF = spark.createDataFrame(spark.sparkContext.emptyRDD[Row], getPerformances.schema)
       val insertDf = dfs.fold(emptyDF) { (df1, df2) => df1.union(df2) }
+
+      log.info(s"""For `acquisitions` ${ids.mkString(", ")}
+           ingest `performances` ${getIds(insertDf, "id_2").mkString(", ")}""".stripMargin)
 
       performancesDs.writeAppend(insertDf)
 
@@ -231,8 +245,8 @@ class FannieMaeHudiSpec extends AsyncBaseSpec {
       joinedDf.count() shouldBe performancesDf.count()
       performancesDf.count() shouldBe getPerformances.count()
 
-      val a_ids = acquisitionsDf.select(acquisitionsDf("id")).distinct().collect().map(_.getString(0))
-      val j_ids = joinedDf.select(joinedDf("id")).distinct().collect().map(_.getString(0))
+      val a_ids = getIds(acquisitionsDf, "id")
+      val j_ids = getIds(joinedDf, "id")
 
       a_ids should contain theSameElementsAs j_ids
     }
@@ -241,7 +255,7 @@ class FannieMaeHudiSpec extends AsyncBaseSpec {
   /**
     * @return acquisitions split in two halves
     */
-  def getAcquisitionsSplit: (DataFrame, DataFrame) = {
+  def getAcquisitions_2Split: List[DataFrame] = {
     val df1 = getAcquisitions
     val thr = df1.count() / 2
 
@@ -252,15 +266,15 @@ class FannieMaeHudiSpec extends AsyncBaseSpec {
     val df4_1 = spark.createDataFrame(rdd3_1, df1.schema)
     val df4_2 = spark.createDataFrame(rdd3_2, df1.schema)
 
-    (df4_1, df4_2)
+    List(df4_1, df4_2)
   }
 
   /**
     * @return performances, with each group split in thirds
     */
-  def getPerformancesSplit: Map[String, (DataFrame, DataFrame, DataFrame)] = {
+  def getPerformances_3Split: Map[String, (DataFrame, DataFrame, DataFrame)] = {
     val df1 = getPerformances
-    val ids = df1.select(df1("id_2")).distinct().collect().map(_.getString(0))
+    val ids = getIds(df1, "id_2")
 
     val mapped = for {id <- ids} yield id -> df1.filter(df1("id_2") === id)
 
