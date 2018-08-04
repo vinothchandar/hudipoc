@@ -10,7 +10,6 @@ class FannieMaeHudiSpec extends AsyncBaseSpec {
 
   import org.apache.log4j.{Level, Logger}
 
-
   lazy val log = Logger.getLogger("hudi.test")
 
   Logger.getLogger("org.apache").setLevel(Level.WARN)
@@ -112,7 +111,7 @@ class FannieMaeHudiSpec extends AsyncBaseSpec {
       acquisitionsDs.read().count() shouldBe df.count()
     }
 
-    "for (1), ingest their 'performances': first 1/3" in {
+    "for (1), ingest their 'performances': first 1/3 rd" in {
 
       // Group 1 from acquisitions, 1st third
       val acquisitionsDf = getAcquisitions_2Split(0)
@@ -137,7 +136,7 @@ class FannieMaeHudiSpec extends AsyncBaseSpec {
       performancesDs.read().count() shouldBe insertDf.count()
     }
 
-    "for (1), ingest their 'performances': second 1/3" in {
+    "for (1), ingest their 'performances': second 1/3 rd" in {
       // Group 1 from acquisitions, 2nd third
       val acquisitionsDf = getAcquisitions_2Split(0)
       val ids = getIds(acquisitionsDf, "id")
@@ -170,7 +169,7 @@ class FannieMaeHudiSpec extends AsyncBaseSpec {
       }
     }
 
-    "for (1), ingest their 'performances': third 1/3" in {
+    "for (1), ingest their 'performances': third 1/3 rd" in {
 
       // Group 1 from acquisitions, 3rd third
       val acquisitionsDf = getAcquisitions_2Split(0)
@@ -242,7 +241,7 @@ class FannieMaeHudiSpec extends AsyncBaseSpec {
       acquisitionsDs.read().count() shouldBe acquisitionsAll.count()
     }
 
-    "for (2), ingest their 'performances' : first (1/3)" in {
+    "for (2), ingest their 'performances': first 1/3 rd" in {
 
       // Group 1 from acquisitions, 1st third
       val acquisitionsDf = getAcquisitions_2Split(1)
@@ -268,7 +267,7 @@ class FannieMaeHudiSpec extends AsyncBaseSpec {
       // performancesDs.read().count() shouldBe insertDf.count()
     }
 
-    "for (2), ingest their 'performances': second 1/3" in {
+    "for (2), ingest their 'performances': second 1/3 rd" in {
       // Group 1 from acquisitions, 2nd third
       val acquisitionsDf = getAcquisitions_2Split(1)
       val ids = getIds(acquisitionsDf, "id")
@@ -301,7 +300,7 @@ class FannieMaeHudiSpec extends AsyncBaseSpec {
       }
     }
 
-    "for (2), ingest their 'performances': third 1/3" in {
+    "for (2), ingest their 'performances': third 1/3 rd" in {
 
       // Group 1 from acquisitions, 3rd third
       val acquisitionsDf = getAcquisitions_2Split(1)
