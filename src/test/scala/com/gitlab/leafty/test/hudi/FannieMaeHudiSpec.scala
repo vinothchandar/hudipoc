@@ -69,18 +69,30 @@ class FannieMaeHudiSpec extends AsyncBaseSpec {
     folder.getRoot.getAbsolutePath
   }
 
-  def getIds(df: DataFrame, id: String) : Array[String] =
-    df.select(df(id)).distinct().collect().map(_.getString(0))
+  def getIds(df: DataFrame, id: String, distinct: Boolean = true) : Array[String] = {
+    (if (distinct)
+      df.select(df(id)).distinct()
+    else
+      df.select(df(id))).collect().map(_.getString(0))
+  }
+
 
   import DataSetDef._
 
   "hudi" should {
 
-    val performancesCommitInstantTime1: Promise[String] = Promise()
-    val performancesCommitInstantTime2: Promise[String] = Promise()
-    val performancesCommitInstantTime3: Promise[String] = Promise()
+    object CommitRuntime {
+      var performancesCommits: List[Promise[String]] = List.empty
 
-    "ingest first half of 'acquisitions'" in {
+      def init = performancesCommits = List(Promise(), Promise(), Promise())
+    }
+
+    /**
+      * Ingest the first part
+      */
+    "ingest 'acquisitions': first 1/2" in {
+
+      CommitRuntime.init
 
       val df = getAcquisitions_2Split(0)
 
@@ -93,7 +105,7 @@ class FannieMaeHudiSpec extends AsyncBaseSpec {
       acquisitionsDs.read().count() shouldBe df.count()
     }
 
-    "ingest first half of 'performances' (1/2)" in {
+    "for (1), ingest their 'performances': first 1/3" in {
 
       // Group 1 from acquisitions, 1st third
       val acquisitionsDf = getAcquisitions_2Split(0)
@@ -107,18 +119,18 @@ class FannieMaeHudiSpec extends AsyncBaseSpec {
       val insertDf = dfs.fold(emptyDF) { (df1, df2) => df1.union(df2) }
 
       log.info(s"""For `acquisitions` ${ids.mkString(", ")}
-           ingest `performances` ${getIds(insertDf, "id_2").mkString(", ")}""".stripMargin)
+           ingest `performances` ${getIds(insertDf, "id_2", false).mkString(", ")}""".stripMargin)
 
       performancesDs.writeReplace(insertDf)
 
-      performancesCommitInstantTime1.success(performancesDs.latestCommit)
+      CommitRuntime.performancesCommits(0).success(performancesDs.latestCommit)
 
       performancesDs.listCommitsSince("000").length shouldBe 1
 
       performancesDs.read().count() shouldBe insertDf.count()
     }
 
-    "ingest first half of 'performances' (2/2)" in {
+    "for (1), ingest their 'performances': second 1/3" in {
       // Group 1 from acquisitions, 2nd third
       val acquisitionsDf = getAcquisitions_2Split(0)
       val ids = getIds(acquisitionsDf, "id")
@@ -130,18 +142,18 @@ class FannieMaeHudiSpec extends AsyncBaseSpec {
       val insertDf = dfs.fold(emptyDF) { (df1, df2) => df1.union(df2) }
 
       log.info(s"""For `acquisitions` ${ids.mkString(", ")}
-           ingest `performances` ${getIds(insertDf, "id_2").mkString(", ")}""".stripMargin)
+           ingest `performances` ${getIds(insertDf, "id_2", false).mkString(", ")}""".stripMargin)
 
       performancesDs.writeAppend(insertDf)
 
-      performancesCommitInstantTime2.success(performancesDs.latestCommit)
+      CommitRuntime.performancesCommits(1).success(performancesDs.latestCommit)
 
       performancesDs.listCommitsSince("000").length shouldBe 2
 
       // read back data from hudi (using incremental view)
       //performancesCommitInstantTime1.isCompleted shouldBe true
       for {
-        commitTime <- performancesCommitInstantTime1.future
+        commitTime <- CommitRuntime.performancesCommits(0).future
 
         hudiDf = performancesDs.read(Some(commitTime))
 
@@ -151,8 +163,47 @@ class FannieMaeHudiSpec extends AsyncBaseSpec {
       }
     }
 
-    "have ingested first half of ds_0001 x ds_0002 consistently" in {
+    "for (1), ingest their 'performances': third 1/3" in {
+
+      // Group 1 from acquisitions, 3rd third
+      val acquisitionsDf = getAcquisitions_2Split(0)
+      val ids = getIds(acquisitionsDf, "id")
+
+      val map = getPerformances_3Split
+      val dfs = for {id <- ids} yield map(id)._3
+
+      val emptyDF = spark.createDataFrame(spark.sparkContext.emptyRDD[Row], getPerformances.schema)
+      val insertDf = dfs.fold(emptyDF) { (df1, df2) => df1.union(df2) }
+
+      log.info(s"""For `acquisitions` ${ids.mkString(", ")}
+           ingest `performances` ${getIds(insertDf, "id_2", false).mkString(", ")}""".stripMargin)
+
+      performancesDs.writeAppend(insertDf)
+
+      CommitRuntime.performancesCommits(2).success(performancesDs.latestCommit)
+
+      performancesDs.listCommitsSince("000").length shouldBe 3
+
+      // read back data from hudi (using incremental view)
+      //performancesCommitInstantTime1.isCompleted shouldBe true
+      for {
+        commitTime <- CommitRuntime.performancesCommits(1).future
+
+        hudiDf = performancesDs.read(Some(commitTime))
+
+      } yield {
+
+        hudiDf.count() shouldBe insertDf.count()
+      }
+    }
+
+    "check have ingested first half of ds_0001 x ds_0002 consistently" in {
+
+      acquisitionsDs.listCommitsSince("000").length shouldBe 1
+
       val acquisitionsDf = acquisitionsDs.read()
+
+      performancesDs.listCommitsSince("000").length shouldBe 3
 
       val performancesDf = performancesDs.read()
 
@@ -166,19 +217,86 @@ class FannieMaeHudiSpec extends AsyncBaseSpec {
       a_ids should contain theSameElementsAs j_ids
     }
 
-    "ingest second half of 'acquisitions'" in {
+    /**
+      * Ingest the second part
+      */
+    "ingest 'acquisitions': second 1/2" in {
+
+      CommitRuntime.init
+
       val df = getAcquisitions_2Split(1)
 
       acquisitionsDs.writeAppend(df)
+
+      acquisitionsDs.hasNewCommits("000") shouldBe true
 
       acquisitionsDs.listCommitsSince("000").length shouldBe 2
 
       acquisitionsDs.read().count() shouldBe getAcquisitions.count()
     }
 
-    "ingest second half of 'performances' (1/2)" in {
+    "for (2), ingest their 'performances' : first (1/3)" in {
 
-      // Group 2 from acquisitions, 1st third
+      // Group 1 from acquisitions, 1st third
+      val acquisitionsDf = getAcquisitions_2Split(1)
+
+      val ids = getIds(acquisitionsDf, "id")
+
+      val map = getPerformances_3Split
+      val dfs = for {id <- ids} yield map(id)._1
+
+      val emptyDF = spark.createDataFrame(spark.sparkContext.emptyRDD[Row], getPerformances.schema)
+      val insertDf = dfs.fold(emptyDF) { (df1, df2) => df1.union(df2) }
+
+      log.info(s"""For `acquisitions` ${ids.mkString(", ")}
+           ingest `performances` ${getIds(insertDf, "id_2", false).mkString(", ")}""".stripMargin)
+
+      performancesDs.writeAppend(insertDf)
+
+      CommitRuntime.performancesCommits(0).success(performancesDs.latestCommit)
+
+      performancesDs.listCommitsSince("000").length shouldBe 1 + 3
+
+      //#todo - continue from previous 3 commits
+      // performancesDs.read().count() shouldBe insertDf.count()
+    }
+
+    "for (2), ingest their 'performances': second 1/3" in {
+      // Group 1 from acquisitions, 2nd third
+      val acquisitionsDf = getAcquisitions_2Split(1)
+      val ids = getIds(acquisitionsDf, "id")
+
+      val map = getPerformances_3Split
+      val dfs = for {id <- ids} yield map(id)._2
+
+      val emptyDF = spark.createDataFrame(spark.sparkContext.emptyRDD[Row], getPerformances.schema)
+      val insertDf = dfs.fold(emptyDF) { (df1, df2) => df1.union(df2) }
+
+      log.info(s"""For `acquisitions` ${ids.mkString(", ")}
+           ingest `performances` ${getIds(insertDf, "id_2", false).mkString(", ")}""".stripMargin)
+
+      performancesDs.writeAppend(insertDf)
+
+      CommitRuntime.performancesCommits(1).success(performancesDs.latestCommit)
+
+      performancesDs.listCommitsSince("000").length shouldBe 2 + 3
+
+      // read back data from hudi (using incremental view)
+      //performancesCommitInstantTime1.isCompleted shouldBe true
+      for {
+        commitTime <- CommitRuntime.performancesCommits(0).future
+
+        hudiDf = performancesDs.read(Some(commitTime))
+
+      } yield {
+
+        hudiDf.count() shouldBe insertDf.count()
+      }
+    }
+
+    "for (2), ingest their 'performances': third 1/3" in {
+
+      // Group 1 from acquisitions, 3rd third
       val acquisitionsDf = getAcquisitions_2Split(1)
       val ids = getIds(acquisitionsDf, "id")
 
@@ -189,19 +307,19 @@ class FannieMaeHudiSpec extends AsyncBaseSpec {
       val insertDf = dfs.fold(emptyDF) { (df1, df2) => df1.union(df2) }
 
       log.info(s"""For `acquisitions` ${ids.mkString(", ")}
-           ingest `performances` ${getIds(insertDf, "id_2").mkString(", ")}""".stripMargin)
+           ingest `performances` ${getIds(insertDf, "id_2", false).mkString(", ")}""".stripMargin)
 
       performancesDs.writeAppend(insertDf)
 
-      performancesCommitInstantTime3.success(performancesDs.latestCommit)
+      CommitRuntime.performancesCommits(2).success(performancesDs.latestCommit)
 
-      performancesDs.listCommitsSince("000").length shouldBe 3
+      performancesDs.listCommitsSince("000").length shouldBe 3 + 3
 
       // read back data from hudi (using incremental view)
-      performancesCommitInstantTime2.isCompleted shouldBe true
-
+      //performancesCommitInstantTime1.isCompleted shouldBe true
       for {
-        commitTime <- performancesCommitInstantTime2.future
+        commitTime <- CommitRuntime.performancesCommits(1).future
+
         hudiDf = performancesDs.read(Some(commitTime))
 
       } yield {
@@ -210,45 +328,26 @@ class FannieMaeHudiSpec extends AsyncBaseSpec {
       }
     }
 
-    "ingest second half of 'performances' (2/2)" in {
-      // Upsert all performances data
-      val insertDf = getPerformances
-
-      performancesDs.writeUpsert(insertDf)
-
-      performancesDs.listCommitsSince("000").length shouldBe 4
-
-      // read back data from hudi (using incremental view)
-      performancesCommitInstantTime3.isCompleted shouldBe true
-      for {
-        commitTime <- performancesCommitInstantTime3.future
-        hudiDf = performancesDs.read(Some(commitTime))
-
-      } yield {
-
-        hudiDf.count() shouldBe insertDf.count()
-      }
-    }
-
-    "have ingested second half of ds_0001 x ds_0002 consistently" in {
+    "check have ingested second half of ds_0001 x ds_0002 consistently" in {
 
       acquisitionsDs.listCommitsSince("000").length shouldBe 2
 
       val acquisitionsDf = acquisitionsDs.read()
 
-      performancesDs.listCommitsSince("000").length shouldBe 4
+      performancesDs.listCommitsSince("000").length shouldBe 6
 
       val performancesDf = performancesDs.read()
 
       val joinedDf = acquisitionsDf.join(performancesDf, acquisitionsDf("id") === performancesDf("id_2"), "inner")
 
       joinedDf.count() shouldBe performancesDf.count()
-      performancesDf.count() shouldBe getPerformances.count()
 
       val a_ids = getIds(acquisitionsDf, "id")
       val j_ids = getIds(joinedDf, "id")
 
       a_ids should contain theSameElementsAs j_ids
+
+      performancesDf.count() shouldBe getPerformances.count()
     }
   }
 
