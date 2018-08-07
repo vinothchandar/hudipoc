@@ -1,9 +1,8 @@
 package com.gitlab.leafty.test.hudi
 
 import com.github.leafty.hudi._
-import org.apache.spark.sql.types.DateType
-
-import scala.collection.JavaConverters._
+import org.apache.spark.sql.functions.{col, to_date, lit}
+import org.apache.spark.sql.types.IntegerType
 
 
 /**
@@ -133,6 +132,7 @@ class FannieMaeHudiSpec extends AsyncBaseSpec {
         s"""For `acquisitions` ${ids.mkString(", ")}
            ingest `performances` ${getIds(insertDf, performancesDs.ID, false).mkString(", ")}""".stripMargin)
 
+        insertDf.show()
       performancesDs.writeReplace(insertDf)
 
       CommitRuntime.performancesCommits(0).success(performancesDs.latestCommit)
@@ -365,8 +365,6 @@ class FannieMaeHudiSpec extends AsyncBaseSpec {
     "force updates to the last 1/3 rd" in  {
       val chunks = getPerformances_3Split_raw
 
-      import org.apache.spark.sql.functions.lit
-      import org.apache.spark.sql.types.DateType
 
 //      val updatedDfs = chunks map { m ⇒
 //          m.values map { values3 ⇒
@@ -455,17 +453,22 @@ class FannieMaeHudiSpec extends AsyncBaseSpec {
   def getPerformances: List[DataFrame] = {
     val url = getClass.getResource("/ds_0002")
 
-    val convertDate : (DataFrame ⇒ DataFrame) =
-      df ⇒ df.withColumn("curr_date", df("curr_date").cast(DateType))
-
-    import com.github.mrpowers.spark.daria.sql.SparkSessionExt._
-    import org.apache.spark.sql.types.{StructType, _}
     import com.github.mrpowers.spark.daria.sql.DataFrameExt._
+    import com.github.mrpowers.spark.daria.sql.ColumnExt._
     import com.github.mrpowers.spark.daria.sql.CustomTransform
 
-    val ct = CustomTransform(
-        transform = convertDate
+    def toDate(name: String) : (DataFrame ⇒ DataFrame) =
+      df ⇒ df.withColumn(name, to_date(col(name), "MM/dd/yyyy"))
+
+    def toInt(name: String) : (DataFrame ⇒ DataFrame) =
+      df ⇒ df.withColumn(name, col(name).cast(IntegerType))
+
+    val ct1 = CustomTransform(
+        transform = toDate("curr_date")
         //addedColumns = Seq("io_yields_raw")
+    )
+    val ct2 = CustomTransform(
+      transform = toInt("remain_to_mat")
     )
 
     (1 to 8).toList map { i ⇒
@@ -473,7 +476,7 @@ class FannieMaeHudiSpec extends AsyncBaseSpec {
         .format("csv")
         .option("header", "true")
         .load(s"${url.toString}/raw_00$i.csv")
-        //.trans(ct)
+        .trans(ct1).trans(ct2)
         )
     }
   }
