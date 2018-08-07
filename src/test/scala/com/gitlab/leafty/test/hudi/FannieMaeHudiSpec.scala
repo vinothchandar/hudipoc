@@ -1,8 +1,6 @@
 package com.gitlab.leafty.test.hudi
 
 import com.github.leafty.hudi._
-import org.apache.spark.sql.functions.{col, to_date, lit}
-import org.apache.spark.sql.types.IntegerType
 
 
 /**
@@ -453,30 +451,43 @@ class FannieMaeHudiSpec extends AsyncBaseSpec {
   def getPerformances: List[DataFrame] = {
     val url = getClass.getResource("/ds_0002")
 
+    /**
+      * #resource
+      * https://spark.apache.org/docs/2.3.0/api/sql/index.html
+      * https://docs-snaplogic.atlassian.net/wiki/spaces/SD/pages/2458071/Date+Functions+and+Properties+Spark+SQL
+      */
+
+    import org.apache.spark.sql.functions.{col, to_timestamp}
+    import org.apache.spark.sql.types.IntegerType
+
+
     import com.github.mrpowers.spark.daria.sql.DataFrameExt._
     import com.github.mrpowers.spark.daria.sql.ColumnExt._
     import com.github.mrpowers.spark.daria.sql.CustomTransform
 
-    def toDate(name: String) : (DataFrame ⇒ DataFrame) =
-      df ⇒ df.withColumn(name, to_date(col(name), "MM/dd/yyyy"))
+    def toTimestamp(name: String, fmt: String) : (DataFrame ⇒ DataFrame) =
+      df ⇒ df.withColumn(name, to_timestamp(col(name), fmt))
 
     def toInt(name: String) : (DataFrame ⇒ DataFrame) =
       df ⇒ df.withColumn(name, col(name).cast(IntegerType))
 
-    val ct1 = CustomTransform(
-        transform = toDate("curr_date")
-        //addedColumns = Seq("io_yields_raw")
-    )
-    val ct2 = CustomTransform(
-      transform = toInt("remain_to_mat")
-    )
+//    val ct1 = CustomTransform(
+//        transform = toTimestamp("curr_date")
+//        //addedColumns = Seq("io_yields_raw")
+//    )
+//    val ct2 = CustomTransform(
+//      transform = toInt("remain_to_mat")
+//    )
 
     (1 to 8).toList map { i ⇒
       performancesDs.mapFromRaw(spark.read
         .format("csv")
         .option("header", "true")
         .load(s"${url.toString}/raw_00$i.csv")
-        .trans(ct1).trans(ct2)
+        //.trans(ct1).trans(ct2)
+        .composeTransforms(List(
+            toTimestamp("curr_date", "MM/dd/yyyy"),
+            toInt("remain_to_mat")))
         )
     }
   }
