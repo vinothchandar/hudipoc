@@ -128,7 +128,7 @@ class FannieMaeHudiSpec extends AsyncBaseSpec {
 
       log.info(
         s"""For `acquisitions` ${ids.mkString(", ")}
-           ingest `performances` ${getIds(insertDf, "id_2", false).mkString(", ")}""".stripMargin)
+           ingest `performances` ${getIds(insertDf, performancesDs.ID, false).mkString(", ")}""".stripMargin)
 
       performancesDs.writeReplace(insertDf)
 
@@ -142,7 +142,7 @@ class FannieMaeHudiSpec extends AsyncBaseSpec {
     "for (1), ingest their 'performances': second 1/3 rd" in {
       // Group 1 from acquisitions, 2nd third
       val acquisitionsDf = acquisitions_2Split(0)
-      val ids = getIds(acquisitionsDf, "id")
+      val ids = getIds(acquisitionsDf, acquisitionsDs.ID)
 
       val map = performances_3Split
       val dfs = for {id <- ids} yield map(id)._2
@@ -151,7 +151,7 @@ class FannieMaeHudiSpec extends AsyncBaseSpec {
 
       log.info(
         s"""For `acquisitions` ${ids.mkString(", ")}
-           ingest `performances` ${getIds(insertDf, "id_2", false).mkString(", ")}""".stripMargin)
+           ingest `performances` ${getIds(insertDf, performancesDs.ID, false).mkString(", ")}""".stripMargin)
 
       performancesDs.writeAppend(insertDf)
 
@@ -176,7 +176,7 @@ class FannieMaeHudiSpec extends AsyncBaseSpec {
 
       // Group 1 from acquisitions, 3rd third
       val acquisitionsDf = acquisitions_2Split(0)
-      val ids = getIds(acquisitionsDf, "id")
+      val ids = getIds(acquisitionsDf, acquisitionsDs.ID)
 
       val map = performances_3Split
       val dfs = for {id <- ids} yield map(id)._3
@@ -185,7 +185,7 @@ class FannieMaeHudiSpec extends AsyncBaseSpec {
 
       log.info(
         s"""For `acquisitions` ${ids.mkString(", ")}
-           ingest `performances` ${getIds(insertDf, "id_2", false).mkString(", ")}""".stripMargin)
+           ingest `performances` ${getIds(insertDf, performancesDs.ID, false).mkString(", ")}""".stripMargin)
 
       performancesDs.writeAppend(insertDf)
 
@@ -216,12 +216,12 @@ class FannieMaeHudiSpec extends AsyncBaseSpec {
 
       val performancesDf = performancesDs.read()
 
-      val joinedDf = acquisitionsDf.join(performancesDf, acquisitionsDf("id") === performancesDf("id_2"), "inner")
+      val joinedDf = acquisitionsDf.join(performancesDf, acquisitionsDf(acquisitionsDs.ID) === performancesDf(performancesDs.ID), "inner")
 
       joinedDf.count() shouldBe performancesDf.count()
 
-      val a_ids = getIds(acquisitionsDf, "id")
-      val j_ids = getIds(joinedDf, "id")
+      val a_ids = getIds(acquisitionsDf, acquisitionsDs.ID)
+      val j_ids = getIds(joinedDf, acquisitionsDs.ID)
 
       a_ids should contain theSameElementsAs j_ids
     }
@@ -249,7 +249,7 @@ class FannieMaeHudiSpec extends AsyncBaseSpec {
       // Group 1 from acquisitions, 1st third
       val acquisitionsDf = acquisitions_2Split(1)
 
-      val ids = getIds(acquisitionsDf, "id")
+      val ids = getIds(acquisitionsDf, acquisitionsDs.ID)
 
       val map = performances_3Split
       val dfs = for {id <- ids} yield map(id)._1
@@ -258,7 +258,7 @@ class FannieMaeHudiSpec extends AsyncBaseSpec {
 
       log.info(
         s"""For `acquisitions` ${ids.mkString(", ")}
-           ingest `performances` ${getIds(insertDf, "id_2", false).mkString(", ")}""".stripMargin)
+           ingest `performances` ${getIds(insertDf, performancesDs.ID, false).mkString(", ")}""".stripMargin)
 
       performancesDs.writeAppend(insertDf)
 
@@ -273,7 +273,7 @@ class FannieMaeHudiSpec extends AsyncBaseSpec {
     "for (2), ingest their 'performances': second 1/3 rd" in {
       // Group 1 from acquisitions, 2nd third
       val acquisitionsDf = acquisitions_2Split(1)
-      val ids = getIds(acquisitionsDf, "id")
+      val ids = getIds(acquisitionsDf, acquisitionsDs.ID)
 
       val map = performances_3Split
       val dfs = for {id <- ids} yield map(id)._2
@@ -282,7 +282,7 @@ class FannieMaeHudiSpec extends AsyncBaseSpec {
 
       log.info(
         s"""For `acquisitions` ${ids.mkString(", ")}
-           ingest `performances` ${getIds(insertDf, "id_2", false).mkString(", ")}""".stripMargin)
+           ingest `performances` ${getIds(insertDf, performancesDs.ID, false).mkString(", ")}""".stripMargin)
 
       performancesDs.writeAppend(insertDf)
 
@@ -307,7 +307,7 @@ class FannieMaeHudiSpec extends AsyncBaseSpec {
 
       // Group 1 from acquisitions, 3rd third
       val acquisitionsDf = acquisitions_2Split(1)
-      val ids = getIds(acquisitionsDf, "id")
+      val ids = getIds(acquisitionsDf, acquisitionsDs.ID)
 
       val map = performances_3Split
       val dfs = for {id <- ids} yield map(id)._3
@@ -316,7 +316,7 @@ class FannieMaeHudiSpec extends AsyncBaseSpec {
 
       log.info(
         s"""For `acquisitions` ${ids.mkString(", ")}
-           ingest `performances` ${getIds(insertDf, "id_2", false).mkString(", ")}""".stripMargin)
+           ingest `performances` ${getIds(insertDf, performancesDs.ID, false).mkString(", ")}""".stripMargin)
 
       performancesDs.writeAppend(insertDf)
 
@@ -347,12 +347,12 @@ class FannieMaeHudiSpec extends AsyncBaseSpec {
 
       val performancesDf = performancesDs.read()
 
-      val joinedDf = acquisitionsDf.join(performancesDf, acquisitionsDf("id") === performancesDf("id_2"), "inner")
+      val joinedDf = acquisitionsDf.join(performancesDf, acquisitionsDf(acquisitionsDs.ID) === performancesDf(performancesDs.ID), "inner")
 
       joinedDf.count() shouldBe performancesDf.count()
 
-      val a_ids = getIds(acquisitionsDf, "id")
-      val j_ids = getIds(joinedDf, "id")
+      val a_ids = getIds(acquisitionsDf, acquisitionsDs.ID)
+      val j_ids = getIds(joinedDf, acquisitionsDs.ID)
 
       a_ids should contain theSameElementsAs j_ids
 
@@ -386,9 +386,9 @@ class FannieMaeHudiSpec extends AsyncBaseSpec {
 
     val maps = dfs map { df ⇒
 
-      val ids = getIds(df, "id_2")
+      val ids = getIds(df, performancesDs.ID)
 
-      val mapped = for {id <- ids} yield id -> df.filter(df("id_2") === id)
+      val mapped = for {id <- ids} yield id -> df.filter(df(performancesDs.ID) === id)
 
       val splitMapped = for {(id, df) <- mapped} yield {
         val rdd = df.rdd.zipWithUniqueId()
