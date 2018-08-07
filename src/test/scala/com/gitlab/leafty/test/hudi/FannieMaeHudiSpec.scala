@@ -1,6 +1,9 @@
 package com.gitlab.leafty.test.hudi
 
 import com.github.leafty.hudi._
+import org.apache.spark.sql.types.DateType
+
+import scala.collection.JavaConverters._
 
 
 /**
@@ -358,6 +361,29 @@ class FannieMaeHudiSpec extends AsyncBaseSpec {
 
       performancesDf.count() shouldBe performancesAll.count()
     }
+
+    "force updates to the last 1/3 rd" in  {
+      val chunks = getPerformances_3Split_raw
+
+      import org.apache.spark.sql.functions.lit
+      import org.apache.spark.sql.types.DateType
+
+//      val updatedDfs = chunks map { m ⇒
+//          m.values map { values3 ⇒
+//            val values = values3._3
+//            //log.info("Schema " + values.schema.toString())
+//            values.withColumn("curr_date", values("curr_date").cast(DateType))
+//            //values.withColumn("foreclosure_amount", lit(1000.00))
+//          }
+//      }
+//
+//      updatedDfs.flatten foreach { updatedDf ⇒ performancesDs.writeUpsert(updatedDf)}
+//
+//      // performancesDs.listCommitsSince("000").last
+//      val df = performancesDs.read()
+//      df.show()
+      1 shouldBe 1
+    }
   }
 
   /**
@@ -382,9 +408,14 @@ class FannieMaeHudiSpec extends AsyncBaseSpec {
     */
   def getPerformances_3Split: Map[String, (DataFrame, DataFrame, DataFrame)] = {
 
+    val emptyMap = Map.empty[String, (DataFrame, DataFrame, DataFrame)]
+    getPerformances_3Split_raw.fold(emptyMap) { (map1, map2) ⇒ map1 ++ map2 }
+  }
+
+  private def getPerformances_3Split_raw : List[Map[String, (DataFrame, DataFrame, DataFrame)]] = {
     val dfs = getPerformances
 
-    val maps = dfs map { df ⇒
+    dfs map { df ⇒
 
       val ids = getIds(df, performancesDs.ID)
 
@@ -409,9 +440,6 @@ class FannieMaeHudiSpec extends AsyncBaseSpec {
 
       splitMapped.toMap
     }
-
-    val emptyMap = Map.empty[String, (DataFrame, DataFrame, DataFrame)]
-    maps.fold(emptyMap) { (map1, map2) ⇒ map1 ++ map2 }
   }
 
   def getAcquisitions_All: DataFrame = {
@@ -427,11 +455,26 @@ class FannieMaeHudiSpec extends AsyncBaseSpec {
   def getPerformances: List[DataFrame] = {
     val url = getClass.getResource("/ds_0002")
 
+    val convertDate : (DataFrame ⇒ DataFrame) =
+      df ⇒ df.withColumn("curr_date", df("curr_date").cast(DateType))
+
+    import com.github.mrpowers.spark.daria.sql.SparkSessionExt._
+    import org.apache.spark.sql.types.{StructType, _}
+    import com.github.mrpowers.spark.daria.sql.DataFrameExt._
+    import com.github.mrpowers.spark.daria.sql.CustomTransform
+
+    val ct = CustomTransform(
+        transform = convertDate
+        //addedColumns = Seq("io_yields_raw")
+    )
+
     (1 to 8).toList map { i ⇒
       performancesDs.mapFromRaw(spark.read
         .format("csv")
         .option("header", "true")
-        .load(s"${url.toString}/raw_00$i.csv"))
+        .load(s"${url.toString}/raw_00$i.csv")
+        //.trans(ct)
+        )
     }
   }
 
