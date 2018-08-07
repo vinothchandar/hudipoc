@@ -21,6 +21,9 @@ class FannieMaeHudiSpec extends AsyncBaseSpec {
   lazy implicit val spark: SparkSession = getSparkSession
   lazy val acquisitionsAll = getAcquisitions_All
   lazy val performancesAll = getPerformances_All
+  lazy val performancesAll_counts = List(40, 16, 40, 58, 31, 12, 51, 36)
+  lazy val acquisitions_2Split = getAcquisitions_2Split
+  lazy val performances_3Split = getPerformances_3Split
 
   "test data sets" should {
     "contain acquisitions" in {
@@ -33,13 +36,13 @@ class FannieMaeHudiSpec extends AsyncBaseSpec {
       val df = performancesAll
 
       // row counts from each csv file
-      val count = 40 + 16 + 40 + 58 + 31 + 12 + 51 + 36
+      val count = performancesAll_counts.sum
 
       df.count() shouldBe count
     }
 
     "contain acquisitions splits" in {
-      val dfs = getAcquisitions_2Split
+      val dfs = acquisitions_2Split
 
       dfs(0).columns should contain theSameElementsAs acquisitionsAll.columns
       dfs(1).columns should contain theSameElementsAs acquisitionsAll.columns
@@ -49,11 +52,11 @@ class FannieMaeHudiSpec extends AsyncBaseSpec {
     }
 
     "contain performances splits" in {
-      val map = getPerformances_3Split
+      val map = performances_3Split
       map should have size 8
 
       // row counts from each csv file
-      val counts = Seq(40, 16, 40, 58, 31, 12, 51, 36)
+      val counts = performancesAll_counts
       val sizes = for {(df1, df2, df3) <- map.values} yield {
         df1.count() + df2.count() + df3.count()
       }
@@ -100,7 +103,7 @@ class FannieMaeHudiSpec extends AsyncBaseSpec {
 
       CommitRuntime.init
 
-      val df = getAcquisitions_2Split(0)
+      val df = acquisitions_2Split(0)
 
       acquisitionsDs.writeReplace(df)
 
@@ -114,11 +117,11 @@ class FannieMaeHudiSpec extends AsyncBaseSpec {
     "for (1), ingest their 'performances': first 1/3 rd" in {
 
       // Group 1 from acquisitions, 1st third
-      val acquisitionsDf = getAcquisitions_2Split(0)
+      val acquisitionsDf = acquisitions_2Split(0)
 
       val ids = getIds(acquisitionsDf, "id")
 
-      val map = getPerformances_3Split
+      val map = performances_3Split
       val dfs = for {id <- ids} yield map(id)._1
 
       val insertDf = joinAll(dfs)
@@ -138,10 +141,10 @@ class FannieMaeHudiSpec extends AsyncBaseSpec {
 
     "for (1), ingest their 'performances': second 1/3 rd" in {
       // Group 1 from acquisitions, 2nd third
-      val acquisitionsDf = getAcquisitions_2Split(0)
+      val acquisitionsDf = acquisitions_2Split(0)
       val ids = getIds(acquisitionsDf, "id")
 
-      val map = getPerformances_3Split
+      val map = performances_3Split
       val dfs = for {id <- ids} yield map(id)._2
 
       val insertDf = joinAll(dfs)
@@ -172,10 +175,10 @@ class FannieMaeHudiSpec extends AsyncBaseSpec {
     "for (1), ingest their 'performances': third 1/3 rd" in {
 
       // Group 1 from acquisitions, 3rd third
-      val acquisitionsDf = getAcquisitions_2Split(0)
+      val acquisitionsDf = acquisitions_2Split(0)
       val ids = getIds(acquisitionsDf, "id")
 
-      val map = getPerformances_3Split
+      val map = performances_3Split
       val dfs = for {id <- ids} yield map(id)._3
 
       val insertDf = joinAll(dfs)
@@ -230,7 +233,7 @@ class FannieMaeHudiSpec extends AsyncBaseSpec {
 
       CommitRuntime.init
 
-      val df = getAcquisitions_2Split(1)
+      val df = acquisitions_2Split(1)
 
       acquisitionsDs.writeAppend(df)
 
@@ -244,11 +247,11 @@ class FannieMaeHudiSpec extends AsyncBaseSpec {
     "for (2), ingest their 'performances': first 1/3 rd" in {
 
       // Group 1 from acquisitions, 1st third
-      val acquisitionsDf = getAcquisitions_2Split(1)
+      val acquisitionsDf = acquisitions_2Split(1)
 
       val ids = getIds(acquisitionsDf, "id")
 
-      val map = getPerformances_3Split
+      val map = performances_3Split
       val dfs = for {id <- ids} yield map(id)._1
 
       val insertDf = joinAll(dfs)
@@ -269,10 +272,10 @@ class FannieMaeHudiSpec extends AsyncBaseSpec {
 
     "for (2), ingest their 'performances': second 1/3 rd" in {
       // Group 1 from acquisitions, 2nd third
-      val acquisitionsDf = getAcquisitions_2Split(1)
+      val acquisitionsDf = acquisitions_2Split(1)
       val ids = getIds(acquisitionsDf, "id")
 
-      val map = getPerformances_3Split
+      val map = performances_3Split
       val dfs = for {id <- ids} yield map(id)._2
 
       val insertDf = joinAll(dfs)
@@ -303,10 +306,10 @@ class FannieMaeHudiSpec extends AsyncBaseSpec {
     "for (2), ingest their 'performances': third 1/3 rd" in {
 
       // Group 1 from acquisitions, 3rd third
-      val acquisitionsDf = getAcquisitions_2Split(1)
+      val acquisitionsDf = acquisitions_2Split(1)
       val ids = getIds(acquisitionsDf, "id")
 
-      val map = getPerformances_3Split
+      val map = performances_3Split
       val dfs = for {id <- ids} yield map(id)._3
 
       val insertDf = joinAll(dfs)
