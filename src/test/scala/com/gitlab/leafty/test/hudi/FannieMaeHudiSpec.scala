@@ -1,7 +1,8 @@
 package com.gitlab.leafty.test.hudi
 
 import com.github.leafty.hudi._
-
+import org.apache.spark.sql.functions.{col, date_add, lit, to_timestamp}
+import org.apache.spark.sql.types.{DateType, DoubleType, TimestampType}
 
 /**
   *
@@ -130,7 +131,7 @@ class FannieMaeHudiSpec extends AsyncBaseSpec {
         s"""For `acquisitions` ${ids.mkString(", ")}
            ingest `performances` ${getIds(insertDf, performancesDs.ID, false).mkString(", ")}""".stripMargin)
 
-        insertDf.show()
+      // insertDf.show()
       performancesDs.writeReplace(insertDf)
 
       CommitRuntime.performancesCommits(0).success(performancesDs.latestCommit)
@@ -363,22 +364,21 @@ class FannieMaeHudiSpec extends AsyncBaseSpec {
     "force updates to the last 1/3 rd" in  {
       val chunks = getPerformances_3Split_raw
 
+      val updatedDfs = chunks map { m ⇒
+          m.values map { values3 ⇒
+            val values = values3._3
+            //log.info("Schema " + values.schema.toString())
+            values.withColumn("curr_date", date_add(col("curr_date").cast(DateType), 1).cast(TimestampType))
+            values.withColumn("foreclosure_amount", lit(1234.56))
+          }
+      }
 
-//      val updatedDfs = chunks map { m ⇒
-//          m.values map { values3 ⇒
-//            val values = values3._3
-//            //log.info("Schema " + values.schema.toString())
-//            values.withColumn("curr_date", values("curr_date").cast(DateType))
-//            //values.withColumn("foreclosure_amount", lit(1000.00))
-//          }
-//      }
-//
-//      updatedDfs.flatten foreach { updatedDf ⇒ performancesDs.writeUpsert(updatedDf)}
-//
-//      // performancesDs.listCommitsSince("000").last
-//      val df = performancesDs.read()
-//      df.show()
-      1 shouldBe 1
+      updatedDfs.flatten foreach { updatedDf ⇒ performancesDs.writeUpsert(updatedDf)}
+
+      // performancesDs.listCommitsSince("000").last
+      val df = performancesDs.read()
+
+      df.filter(col("foreclosure_amount").isNotNull).count() shouldBe 98 // #todo df.count() / 3
     }
   }
 
@@ -457,7 +457,6 @@ class FannieMaeHudiSpec extends AsyncBaseSpec {
       * https://docs-snaplogic.atlassian.net/wiki/spaces/SD/pages/2458071/Date+Functions+and+Properties+Spark+SQL
       */
 
-    import org.apache.spark.sql.functions.{col, to_timestamp}
     import org.apache.spark.sql.types.IntegerType
 
 
@@ -470,6 +469,9 @@ class FannieMaeHudiSpec extends AsyncBaseSpec {
 
     def toInt(name: String) : (DataFrame ⇒ DataFrame) =
       df ⇒ df.withColumn(name, col(name).cast(IntegerType))
+
+    def toDouble(name: String) : (DataFrame ⇒ DataFrame) =
+      df ⇒ df.withColumn(name, col(name).cast(DoubleType))
 
 //    val ct1 = CustomTransform(
 //        transform = toTimestamp("curr_date")
@@ -487,6 +489,7 @@ class FannieMaeHudiSpec extends AsyncBaseSpec {
         //.trans(ct1).trans(ct2)
         .composeTransforms(List(
             toTimestamp("curr_date", "MM/dd/yyyy"),
+            toDouble("foreclosure_amount"),
             toInt("remain_to_mat")))
         )
     }
