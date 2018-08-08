@@ -445,12 +445,11 @@ class FannieMaeHudiSpec extends AsyncBaseSpec {
 
     import AcquisitionsDatasetDef._
 
-    val df = spark.read
+    spark.read
       .format("csv")
       .option("header", "true")
       .load(url.getPath)
-
-    df.mapFromRaw
+      .mapFromRaw
   }
 
   def getPerformances: List[DataFrame] = {
@@ -466,12 +465,11 @@ class FannieMaeHudiSpec extends AsyncBaseSpec {
     import PerformancesDatasetDef.customTrans._
 
     (1 to 8).toList map { i ⇒
-        val df = spark.read
+        spark.read
         .format("csv")
         .option("header", "true")
         .load(s"${url.toString}/raw_00$i.csv")
-
-        df.mapFromRaw.applyTransformations
+        .mapFromRaw.applyTransformations
     }
   }
 
