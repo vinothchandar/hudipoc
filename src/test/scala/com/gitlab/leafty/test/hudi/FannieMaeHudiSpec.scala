@@ -1,8 +1,6 @@
 package com.gitlab.leafty.test.hudi
 
 import com.github.leafty.hudi._
-import org.apache.spark.sql.functions.{col, date_add, lit, to_timestamp}
-import org.apache.spark.sql.types.{DateType, DoubleType, TimestampType}
 
 /**
   *
@@ -364,11 +362,14 @@ class FannieMaeHudiSpec extends AsyncBaseSpec {
     "force updates to the last 1/3 rd" in  {
       val chunks = getPerformances_3Split_raw
 
+      import PerformancesRowTransformations._
+      import org.apache.spark.sql.functions.{col, lit}
+
       val updatedDfs = chunks map { m ⇒
           m.values map { values3 ⇒
             val values = values3._3
             //log.info("Schema " + values.schema.toString())
-            values.withColumn("curr_date", date_add(col("curr_date").cast(DateType), 1).cast(TimestampType))
+            values.withColumn("curr_date", curr_date_inc)
             values.withColumn("foreclosure_amount", lit(1234.56))
           }
       }
@@ -457,21 +458,7 @@ class FannieMaeHudiSpec extends AsyncBaseSpec {
       * https://docs-snaplogic.atlassian.net/wiki/spaces/SD/pages/2458071/Date+Functions+and+Properties+Spark+SQL
       */
 
-    import org.apache.spark.sql.types.IntegerType
 
-
-    import com.github.mrpowers.spark.daria.sql.DataFrameExt._
-    import com.github.mrpowers.spark.daria.sql.ColumnExt._
-    import com.github.mrpowers.spark.daria.sql.CustomTransform
-
-    def toTimestamp(name: String, fmt: String) : (DataFrame ⇒ DataFrame) =
-      df ⇒ df.withColumn(name, to_timestamp(col(name), fmt))
-
-    def toInt(name: String) : (DataFrame ⇒ DataFrame) =
-      df ⇒ df.withColumn(name, col(name).cast(IntegerType))
-
-    def toDouble(name: String) : (DataFrame ⇒ DataFrame) =
-      df ⇒ df.withColumn(name, col(name).cast(DoubleType))
 
 //    val ct1 = CustomTransform(
 //        transform = toTimestamp("curr_date")
@@ -480,6 +467,7 @@ class FannieMaeHudiSpec extends AsyncBaseSpec {
 //    val ct2 = CustomTransform(
 //      transform = toInt("remain_to_mat")
 //    )
+    import PerformancesRowTransformations._
 
     (1 to 8).toList map { i ⇒
       performancesDs.mapFromRaw(spark.read
@@ -487,11 +475,7 @@ class FannieMaeHudiSpec extends AsyncBaseSpec {
         .option("header", "true")
         .load(s"${url.toString}/raw_00$i.csv")
         //.trans(ct1).trans(ct2)
-        .composeTransforms(List(
-            toTimestamp("curr_date", "MM/dd/yyyy"),
-            toDouble("foreclosure_amount"),
-            toInt("remain_to_mat")))
-        )
+        ).applyTransformations
     }
   }
 

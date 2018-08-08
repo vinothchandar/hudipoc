@@ -8,11 +8,11 @@ import org.apache.spark.sql.{Column, DataFrame}
   */
 trait DatasetMapperFromRaw {
 
-  def rowKeyColumn(df: DataFrame) : Column
+  def rowKeyColumn(df: DataFrame): Column
 
-  def partitionColumn(df: DataFrame) : Column
+  def partitionColumn(df: DataFrame): Column
 
-  def mapFromRaw(df: DataFrame) : DataFrame =
+  def mapFromRaw(df: DataFrame): DataFrame =
     df.withColumn(HoodieKeys.PARTITION_KEY, partitionColumn(df))
       .withColumn(HoodieKeys.ROW_KEY, rowKeyColumn(df))
 }
