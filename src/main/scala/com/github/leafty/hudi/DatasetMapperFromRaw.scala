@@ -6,13 +6,13 @@ import org.apache.spark.sql.{Column, DataFrame}
 /**
   * Encapsulates mapping from raw to Hoodie format
   */
-trait DatasetMapperFromRaw {
+abstract class DatasetMapperFromRaw(df : DataFrame) {
 
-  def rowKeyColumn(df: DataFrame): Column
+  def rowKeyColumn: Column
 
-  def partitionColumn(df: DataFrame): Column
+  def partitionColumn: Column
 
-  def mapFromRaw(df: DataFrame): DataFrame =
-    df.withColumn(HoodieKeys.PARTITION_KEY, partitionColumn(df))
-      .withColumn(HoodieKeys.ROW_KEY, rowKeyColumn(df))
+  def mapFromRaw : DataFrame =
+    df.withColumn(HoodieKeys.PARTITION_KEY, partitionColumn)
+      .withColumn(HoodieKeys.ROW_KEY, rowKeyColumn)
 }

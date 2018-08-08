@@ -10,7 +10,7 @@ import scala.language.implicitConversions
 /**
   *
   */
-object PerformancesRowTransformations {
+trait PerformancesRowTransformations {
 
   import RowTransformationsRegistry._
 
@@ -23,11 +23,12 @@ object PerformancesRowTransformations {
 
   val curr_date_inc = date_add(col("curr_date").cast(DateType), 1).cast(TimestampType)
 
-  implicit class Local(df: DataFrame) extends RowTransformations {
+  implicit class Transformer(df: DataFrame) extends RowTransformations {
 
     def transformations = List(curr_date, foreclosure_amount, remain_to_mat)
 
     import com.github.mrpowers.spark.daria.sql.DataFrameExt._
+
 
     /**
       * Can be overridden for more control over application of transformations

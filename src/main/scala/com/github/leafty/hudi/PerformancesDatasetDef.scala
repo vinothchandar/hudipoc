@@ -1,15 +1,25 @@
 package com.github.leafty.hudi
 
-import org.apache.spark.sql.functions.{concat_ws, lit}
+import org.apache.spark.sql.functions.{concat_ws, lit, col}
 import org.apache.spark.sql.{Column, DataFrame}
 
 
-class PerformancesDatasetDef(location: Option[String] = None) extends DatasetDef("performances", HoodieKeys.ROW_KEY, "curr_date", location)
-  with DatasetMapperFromRaw {
+class PerformancesDatasetDef(location: Option[String] = None)
+  extends DatasetDef("performances", HoodieKeys.ROW_KEY, "curr_date", location) {
+
+}
+
+object PerformancesDatasetDef {
 
   final val ID = "id_2"
 
-  override def rowKeyColumn(df: DataFrame): Column = concat_ws("--", df(ID), df("curr_date"))
+  val customTrans = new PerformancesRowTransformations {}
 
-  override def partitionColumn(df: DataFrame): Column = concat_ws("/", lit("parent"), df(ID))
+  implicit class Mapper(df : DataFrame) extends DatasetMapperFromRaw(df) {
+
+    override def rowKeyColumn: Column = concat_ws("--", col(ID), col("curr_date"))
+
+    override def partitionColumn: Column = concat_ws("/", lit("parent"), col(ID))
+
+  }
 }
