@@ -7,17 +7,16 @@ import org.apache.spark.sql.{Column, DataFrame}
 class AcquisitionsDatasetDef(location: Option[String] = None)
   extends DatasetDef("acquisitions", HoodieKeys.ROW_KEY, "start_date", location) {
 
-}
-
-object AcquisitionsDatasetDef {
-
   final val ID = "id"
 
-  implicit class Mapper(df : DataFrame) extends DatasetMapperFromRaw(df) {
+  object implicits extends AcquisitionsRowTransformations {
 
-    override def rowKeyColumn: Column = col(ID)
+    implicit class Mapper(df : DataFrame) extends DatasetMapperFromRaw(df) {
 
-    override def partitionColumn: Column = concat_ws("/", lit("seller"), col("seller"))
+      override def rowKeyColumn: Column = col(ID)
+
+      override def partitionColumn: Column = concat_ws("/", lit("seller"), col("seller"))
+    }
   }
-
 }
+
