@@ -8,6 +8,6 @@ trait RowTransformations {
 
   def transformations: List[RowTransformation]
 
-  def applyTransformations(): DataFrame
+  def applyTransformations(df: DataFrame): DataFrame
 }
 

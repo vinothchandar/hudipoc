@@ -362,14 +362,14 @@ class FannieMaeHudiSpec extends AsyncBaseSpec {
     "force updates to the last 1/3 rd" in  {
       val chunks = getPerformances_3Split_raw
 
-      import performancesDs.implicits._
+      //import performancesDs.implicits._
       import org.apache.spark.sql.functions.{col, lit}
 
       val updatedDfs = chunks map { m ⇒
           m.values map { values3 ⇒
             val values = values3._3
             //log.info("Schema " + values.schema.toString())
-            values.withColumn("curr_date", curr_date_inc)
+            values.withColumn("curr_date", PerformancesRowTransformations.curr_date_inc)
             values.withColumn("foreclosure_amount", lit(1234.56))
           }
       }
@@ -443,13 +443,12 @@ class FannieMaeHudiSpec extends AsyncBaseSpec {
 
     val url = getClass.getResource("/ds_0001")
 
-    import acquisitionsDs.implicits._
+    //import acquisitionsDs.implicits._
 
-    spark.read
+    acquisitionsDs.transform(spark.read
       .format("csv")
       .option("header", "true")
-      .load(url.getPath)
-      .mapFromRaw
+      .load(url.getPath))
   }
 
   def getPerformances: List[DataFrame] = {
@@ -461,14 +460,14 @@ class FannieMaeHudiSpec extends AsyncBaseSpec {
       * https://docs-snaplogic.atlassian.net/wiki/spaces/SD/pages/2458071/Date+Functions+and+Properties+Spark+SQL
       */
 
-    import performancesDs.implicits._
+    //import performancesDs.implicits._
 
     (1 to 8).toList map { i ⇒
-        spark.read
+
+        performancesDs.transform(spark.read
         .format("csv")
         .option("header", "true")
-        .load(s"${url.toString}/raw_00$i.csv")
-        .mapFromRaw.applyTransformations
+        .load(s"${url.toString}/raw_00$i.csv"))
     }
   }
 

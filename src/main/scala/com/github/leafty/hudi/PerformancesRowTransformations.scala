@@ -21,3 +21,5 @@ trait PerformancesRowTransformations {
 
   val curr_date_inc = date_add(col("curr_date").cast(DateType), 1).cast(TimestampType)
 }
+
+object PerformancesRowTransformations extends PerformancesRowTransformations

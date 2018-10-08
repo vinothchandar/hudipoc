@@ -5,18 +5,17 @@ import org.apache.spark.sql.{Column, DataFrame}
 
 
 class AcquisitionsDatasetDef(location: Option[String] = None)
-  extends DatasetDef("acquisitions", HoodieKeys.ROW_KEY, "start_date", location) {
+  extends DatasetDef("acquisitions", HoodieKeys.ROW_KEY, "start_date", location) with DatasetDefExt {
 
   final val ID = "id"
 
-  object implicits extends AcquisitionsRowTransformations {
-
-    implicit class Mapper(df : DataFrame) extends DatasetMapperFromRaw(df) {
+  override val mapper : DatasetMapperFromRaw = new DatasetMapperFromRaw {
 
       override def rowKeyColumn: Column = col(ID)
 
       override def partitionColumn: Column = concat_ws("/", lit("seller"), col("seller"))
-    }
   }
+
+  override def transform : DataFrame ⇒ DataFrame = mapper.mapFromRaw
 }
 
