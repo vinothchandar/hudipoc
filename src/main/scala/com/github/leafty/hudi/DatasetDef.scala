@@ -1,8 +1,5 @@
 package com.github.leafty.hudi
 
-//import com.uber.hoodie.common.util.FSUtils
-//import com.uber.hoodie.config.HoodieWriteConfig
-//import com.uber.hoodie.{DataSourceReadOptions, DataSourceWriteOptions, HoodieDataSourceHelpers}
 import org.apache.hudi.common.util.FSUtils
 import org.apache.hudi.config.HoodieWriteConfig
 import org.apache.hudi.{DataSourceReadOptions, DataSourceWriteOptions, HoodieDataSourceHelpers}
@@ -65,14 +62,14 @@ abstract case class DatasetDef(name: String, rowKey: String, mergeByKey: String,
     HoodieDataSourceHelpers.listCommitsSince(getFs(location.get), location.get, instantTimestamp).asScala.toList
   }
 
-  private val uberHoodieFormat = "org.apache.hudi"
+  import DataSetDef._
 
   /**
     *
     */
   def writeReplace(df: DataFrame)(implicit commonOpts: Map[String, String]): Unit =
     df.write
-      .format(uberHoodieFormat)
+      .format(apacheHudiFormat)
       .options(commonOpts)
       .options(this.asMap)
       .option(DataSourceWriteOptions.OPERATION_OPT_KEY, DataSourceWriteOptions.INSERT_OPERATION_OPT_VAL)
@@ -84,7 +81,7 @@ abstract case class DatasetDef(name: String, rowKey: String, mergeByKey: String,
     */
   def writeAppend(df: DataFrame)(implicit commonOpts: Map[String, String]): Unit =
     df.write
-      .format(uberHoodieFormat)
+      .format(apacheHudiFormat)
       .options(commonOpts)
       .options(this.asMap)
       .option(DataSourceWriteOptions.OPERATION_OPT_KEY, DataSourceWriteOptions.INSERT_OPERATION_OPT_VAL)
@@ -97,7 +94,7 @@ abstract case class DatasetDef(name: String, rowKey: String, mergeByKey: String,
     */
   def writeUpsert(df: DataFrame)(implicit commonOpts: Map[String, String]): Unit =
     df.write
-      .format(uberHoodieFormat)
+      .format(apacheHudiFormat)
       .options(commonOpts)
       .options(this.asMap)
       .option(DataSourceWriteOptions.OPERATION_OPT_KEY, DataSourceWriteOptions.UPSERT_OPERATION_OPT_VAL)
@@ -111,19 +108,21 @@ abstract case class DatasetDef(name: String, rowKey: String, mergeByKey: String,
   def read(commitTime: Option[String] = None)(implicit session: SparkSession): DataFrame = {
     commitTime match {
       case Some(c) ⇒ session.read
-        .format(uberHoodieFormat)
+        .format(apacheHudiFormat)
         .option(DataSourceReadOptions.VIEW_TYPE_OPT_KEY, DataSourceReadOptions.VIEW_TYPE_INCREMENTAL_OPT_VAL)
         .option(DataSourceReadOptions.BEGIN_INSTANTTIME_OPT_KEY, c)
         .load(this.location.get)
 
       case None ⇒ session.read
-        .format(uberHoodieFormat)
+        .format(apacheHudiFormat)
         .load(this.location.get + "/*/*/*")
     }
   }
 }
 
 object DataSetDef {
+
+  val apacheHudiFormat = "org.apache.hudi"
 
   lazy implicit val commonOpts = Map(
     "hoodie.insert.shuffle.parallelism" -> "4",
