@@ -16,15 +16,15 @@
 
 package com.uber.hoodie.common;
 
-import com.uber.hoodie.common.model.HoodieCommitMetadata;
-import com.uber.hoodie.common.model.HoodieKey;
-import com.uber.hoodie.common.model.HoodiePartitionMetadata;
-import com.uber.hoodie.common.model.HoodieRecord;
-import com.uber.hoodie.common.model.HoodieTestUtils;
-import com.uber.hoodie.common.table.HoodieTableMetaClient;
-import com.uber.hoodie.common.table.HoodieTimeline;
-import com.uber.hoodie.common.util.FSUtils;
-import com.uber.hoodie.common.util.HoodieAvroUtils;
+//import com.uber.hoodie.common.model.HoodieCommitMetadata;
+//import com.uber.hoodie.common.model.HoodieKey;
+//import com.uber.hoodie.common.model.HoodiePartitionMetadata;
+//import com.uber.hoodie.common.model.HoodieRecord;
+//import com.uber.hoodie.common.model.HoodieTestUtils;
+//import com.uber.hoodie.common.table.HoodieTableMetaClient;
+//import com.uber.hoodie.common.table.HoodieTimeline;
+//import com.uber.hoodie.common.util.FSUtils;
+//import com.uber.hoodie.common.util.HoodieAvroUtils;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
@@ -35,6 +35,8 @@ import java.util.Optional;
 import java.util.Random;
 import java.util.Set;
 import java.util.UUID;
+
+import com.uber.hoodie.common.model.HoodieTestUtils;
 import org.apache.avro.Schema;
 import org.apache.avro.generic.GenericData;
 import org.apache.avro.generic.GenericRecord;
@@ -42,6 +44,14 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FSDataOutputStream;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
+import org.apache.hudi.common.model.HoodieCommitMetadata;
+import org.apache.hudi.common.model.HoodieKey;
+import org.apache.hudi.common.model.HoodiePartitionMetadata;
+import org.apache.hudi.common.model.HoodieRecord;
+import org.apache.hudi.common.table.HoodieTableMetaClient;
+import org.apache.hudi.common.table.HoodieTimeline;
+import org.apache.hudi.common.util.FSUtils;
+import org.apache.hudi.common.util.HoodieAvroUtils;
 
 /**
  * Class to be used in tests to keep generating test inserts and updates against a corpus.

@@ -19,7 +19,8 @@
 package com.gitlab.leafty.test.hudi;
 
 import com.uber.hoodie.common.TestRawTripPayload;
-import com.uber.hoodie.common.model.HoodieRecord;
+import org.apache.hudi.common.model.HoodieRecord;
+//import com.uber.hoodie.common.model.HoodieRecord;
 import java.io.IOException;
 import java.util.List;
 import java.util.Optional;

@@ -1,8 +1,11 @@
 package com.github.leafty.hudi
 
-import com.uber.hoodie.common.util.FSUtils
-import com.uber.hoodie.config.HoodieWriteConfig
-import com.uber.hoodie.{DataSourceReadOptions, DataSourceWriteOptions, HoodieDataSourceHelpers}
+//import com.uber.hoodie.common.util.FSUtils
+//import com.uber.hoodie.config.HoodieWriteConfig
+//import com.uber.hoodie.{DataSourceReadOptions, DataSourceWriteOptions, HoodieDataSourceHelpers}
+import org.apache.hudi.common.util.FSUtils
+import org.apache.hudi.config.HoodieWriteConfig
+import org.apache.hudi.{DataSourceReadOptions, DataSourceWriteOptions, HoodieDataSourceHelpers}
 import org.apache.spark.sql.{DataFrame, SaveMode, SparkSession}
 
 
