@@ -12,7 +12,7 @@ class FannieMaeHudiSpec extends AsyncBaseSpec {
   lazy val log = Logger.getLogger("hudi.test")
 
   Logger.getLogger("org.apache").setLevel(Level.WARN)
-  Logger.getLogger("com.uber.hoodie").setLevel(Level.WARN)
+  Logger.getLogger("org.apache.hudi").setLevel(Level.WARN)
 
   import org.apache.spark.sql.{DataFrame, Row, SparkSession}
 

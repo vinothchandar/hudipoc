@@ -4,7 +4,7 @@ package com.gitlab.leafty.test.hudi
 //import com.uber.hoodie.common.util.FSUtils
 //import com.uber.hoodie.config.HoodieWriteConfig
 //import com.uber.hoodie.{DataSourceReadOptions, DataSourceWriteOptions, HoodieDataSourceHelpers}
-import com.uber.hoodie.common.HoodieTestDataGenerator
+import org.apache.hudi.common.HoodieTestDataGenerator
 import org.apache.hudi.{DataSourceReadOptions, DataSourceWriteOptions, HoodieDataSourceHelpers}
 import org.apache.hudi.common.util.FSUtils
 import org.apache.hudi.config.HoodieWriteConfig
@@ -17,7 +17,7 @@ import org.junit.rules.TemporaryFolder
 class HudiSpec extends AsyncBaseSpec {
 
   Logger.getLogger("org.apache").setLevel(Level.WARN)
-  Logger.getLogger("com.uber.hoodie").setLevel(Level.WARN)
+  Logger.getLogger("org.apache.hudi").setLevel(Level.WARN)
 
   lazy val spark: SparkSession = getSparkSession
 
@@ -54,7 +54,7 @@ class HudiSpec extends AsyncBaseSpec {
 
       val records1 = DataSourceTestUtils.convertToStringList(dataGen.generateInserts("001", 100)).toList
       val inputDF1: Dataset[Row] = spark.read.json(spark.sparkContext.parallelize(records1, 2).toDS())
-      inputDF1.write.format("com.uber.hoodie")
+      inputDF1.write.format("org.apache.hudi")
         .options(commonOpts)
         .option(DataSourceWriteOptions.OPERATION_OPT_KEY, DataSourceWriteOptions.INSERT_OPERATION_OPT_VAL)
         .mode(SaveMode.Overwrite)
@@ -64,7 +64,7 @@ class HudiSpec extends AsyncBaseSpec {
       val commitInstantTime1: String = HoodieDataSourceHelpers.latestCommit(fs, basePath)
 
       // Read RO View
-      val hoodieROViewDF1 = spark.read.format("com.uber.hoodie")
+      val hoodieROViewDF1 = spark.read.format("org.apache.hudi")
         .load(basePath + "/*/*/*/*")
       hoodieROViewDF1.count() shouldBe 100
     }
@@ -81,7 +81,7 @@ class HudiSpec extends AsyncBaseSpec {
       // Insert Operation
       val records1 = DataSourceTestUtils.convertToStringList(dataGen.generateInserts("001", 100)).toList
       val inputDF1: Dataset[Row] = spark.read.json(spark.sparkContext.parallelize(records1, 2).toDS())
-      inputDF1.write.format("com.uber.hoodie")
+      inputDF1.write.format("org.apache.hudi")
         .options(commonOpts)
         .option(DataSourceWriteOptions.OPERATION_OPT_KEY, DataSourceWriteOptions.INSERT_OPERATION_OPT_VAL)
         .mode(SaveMode.Overwrite)
@@ -91,7 +91,7 @@ class HudiSpec extends AsyncBaseSpec {
       val commitInstantTime1: String = HoodieDataSourceHelpers.latestCommit(fs, basePath)
 
       // Read RO View
-      val hoodieROViewDF1 = spark.read.format("com.uber.hoodie")
+      val hoodieROViewDF1 = spark.read.format("org.apache.hudi")
         .load(basePath + "/*/*/*/*")
       hoodieROViewDF1.count() shouldBe 100
 
@@ -100,7 +100,7 @@ class HudiSpec extends AsyncBaseSpec {
       val uniqueKeyCnt = inputDF2.select("_row_key").distinct().count()
 
       // Upsert Operation
-      inputDF2.write.format("com.uber.hoodie")
+      inputDF2.write.format("org.apache.hudi")
         .options(commonOpts)
         .mode(SaveMode.Append)
         .save(basePath)
@@ -110,13 +110,13 @@ class HudiSpec extends AsyncBaseSpec {
       HoodieDataSourceHelpers.listCommitsSince(fs, basePath, "000").size() shouldBe 2
 
       // Read RO View
-      val hoodieROViewDF2 = spark.read.format("com.uber.hoodie")
+      val hoodieROViewDF2 = spark.read.format("org.apache.hudi")
         .load(basePath + "/*/*/*/*");
       hoodieROViewDF2.count() shouldBe 100 // still 100, since we only updated
 
 
       // Read Incremental View
-      val hoodieIncViewDF2 = spark.read.format("com.uber.hoodie")
+      val hoodieIncViewDF2 = spark.read.format("org.apache.hudi")
         .option(DataSourceReadOptions.VIEW_TYPE_OPT_KEY, DataSourceReadOptions.VIEW_TYPE_INCREMENTAL_OPT_VAL)
         .option(DataSourceReadOptions.BEGIN_INSTANTTIME_OPT_KEY, commitInstantTime1)
         .load(basePath)

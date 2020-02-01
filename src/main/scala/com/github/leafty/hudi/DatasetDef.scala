@@ -65,7 +65,7 @@ abstract case class DatasetDef(name: String, rowKey: String, mergeByKey: String,
     HoodieDataSourceHelpers.listCommitsSince(getFs(location.get), location.get, instantTimestamp).asScala.toList
   }
 
-  private val uberHoodieFormat = "com.uber.hoodie"
+  private val uberHoodieFormat = "org.apache.hudi"
 
   /**
     *
