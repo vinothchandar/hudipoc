@@ -109,7 +109,7 @@ abstract case class DatasetDef(name: String, rowKey: String, mergeByKey: String,
     commitTime match {
       case Some(c) ⇒ session.read
         .format(apacheHudiFormat)
-        .option(DataSourceReadOptions.VIEW_TYPE_OPT_KEY, DataSourceReadOptions.VIEW_TYPE_INCREMENTAL_OPT_VAL)
+        .option(DataSourceReadOptions.QUERY_TYPE_OPT_KEY, DataSourceReadOptions.QUERY_TYPE_INCREMENTAL_OPT_VAL)
         .option(DataSourceReadOptions.BEGIN_INSTANTTIME_OPT_KEY, c)
         .load(this.location.get)
 

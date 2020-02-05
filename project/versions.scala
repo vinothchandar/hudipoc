@@ -4,5 +4,7 @@ object versions {
 
   val spark = "2.4.4"
 
+  val sparkDaria = "2.3.1_0.25.0"
+
   val hudi = "0.5.1-incubating"
 }
