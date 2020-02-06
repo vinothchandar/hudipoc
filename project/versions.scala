@@ -7,4 +7,6 @@ object versions {
   val sparkDaria = "2.3.1_0.25.0"
 
   val hudi = "0.5.1-incubating"
+
+  val quillSpark = "3.5.0"
 }

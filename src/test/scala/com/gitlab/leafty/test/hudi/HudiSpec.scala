@@ -127,7 +127,7 @@ class HudiSpec extends AsyncBaseSpec {
 
   protected def getSparkSession: SparkSession = {
     val builder = SparkSession.builder()
-      .appName("test-hudi")
+      .appName("hudipoc")
       .master("local[2]")
       .config("spark.ui.enabled", "false")
       .config("spark.serializer", "org.apache.spark.serializer.KryoSerializer")

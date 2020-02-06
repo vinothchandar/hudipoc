@@ -12,11 +12,15 @@ resolvers += "Spark Packages" at "https://dl.bintray.com/spark-packages/maven/"
 
 libraryDependencies ++= Seq(
     "org.apache.spark" %% "spark-sql",
+    //"org.apache.spark" %% "spark-streaming",
     "org.apache.spark" %% "spark-avro").map(_ % versions.spark)
 
 libraryDependencies ++= Seq(
     "org.apache.hudi" %% "hudi-spark",
     "org.apache.hudi" %% "hudi-utilities-bundle").map(_ % versions.hudi)
+
+libraryDependencies ++= Seq(
+    "io.getquill" %% "quill-spark").map(_ % versions.quillSpark)
 
 libraryDependencies += "mrpowers" % "spark-daria" % versions.sparkDaria
 
