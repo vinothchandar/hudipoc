@@ -1,11 +1,11 @@
 package com.gitlab.leafty.test.misc
 
 import java.sql.Timestamp
-import java.time.{LocalDate, LocalDateTime, OffsetDateTime, ZoneOffset}
 import java.time.format.DateTimeFormatter
+import java.time.{LocalDate, LocalDateTime, OffsetDateTime}
 
-import org.apache.spark.sql.{Dataset, Row, SparkSession}
 import org.apache.spark.sql.types._
+import org.apache.spark.sql.{Dataset, Row, SparkSession}
 
 object DateTimeUtils {
 
@@ -39,9 +39,8 @@ object DateTimeUtils {
 trait RangeJoinMockData {
 
   val session: SparkSession
-  import session.implicits._
-
   import DateTimeUtils._
+  import session.implicits._
 
   lazy val trnsData: Dataset[Trn] = session
     .createDataFrame(
@@ -68,22 +67,20 @@ trait RangeJoinMockData {
     )
     .as[Trn]
 
-  private def makeRangeRow(date: String) : Row = {
-    val d = parseDate(date)
-    Row(d, addToEOD(d))
+  private def makeRangeRow(ts: Timestamp) : Row = {
+    //val d = parseDate(date)
+    Row(ts, addToEOD(ts))
   }
 
-  lazy val rangesData: Dataset[Range] = session
+  private def makeWeeklyDates(date: String, count: Int) : Seq[Timestamp] = {
+    val start = parseDate(date)
+    (0 until count).map(i ⇒ addDays(start, i * 7))
+  }
+
+  def rangesWeeklyData(startDate: String): Dataset[Range] = session
     .createDataFrame(
       session.sparkContext.parallelize(
-        Seq(
-          makeRangeRow("2019-12-20"),
-          makeRangeRow("2019-12-27"),
-          makeRangeRow("2020-01-03"),
-          makeRangeRow("2020-01-10"),
-          makeRangeRow("2020-01-17"),
-          makeRangeRow("2020-01-24"),
-        )),
+        makeWeeklyDates(startDate, 6).map(makeRangeRow)),
       new StructType().add("start", TimestampType).add("end", TimestampType)
     )
     .as[Range]

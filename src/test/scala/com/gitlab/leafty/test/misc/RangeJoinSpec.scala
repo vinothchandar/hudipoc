@@ -19,7 +19,7 @@ class RangeJoinSpec extends AsyncBaseSpec with RangeJoinMockData {
   "spark range join" should {
     "work" in {
       val ds = trnsData
-        .join(rangesData, $"time" between ($"start", $"end"), "inner")
+        .join(rangesWeeklyData("2019-12-20"), $"time" between($"start", $"end"), "inner")
         .select("*")
 
       /**
