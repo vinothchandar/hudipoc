@@ -5,8 +5,10 @@ import java.sql.Timestamp
 
 package object misc {
 
-  case class Trn(amount: BigDecimal, time: Timestamp)
+  type CtgId = String
 
-  case class Range(start: Timestamp, end: Timestamp)
+  case class Trn(ctgId: CtgId, amount: BigDecimal, time: Timestamp)
+
+  case class Range(ctgId: CtgId, start: Timestamp, end: Timestamp)
 
 }

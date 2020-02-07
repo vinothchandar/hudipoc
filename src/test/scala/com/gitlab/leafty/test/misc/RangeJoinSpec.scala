@@ -16,10 +16,14 @@ class RangeJoinSpec extends AsyncBaseSpec with RangeJoinMockData {
 
   import session.implicits._
 
-  "spark range join" should {
-    "work" in {
+  "range join" should {
+    "work for `point in interval range joins`" in {
+      /**
+        * https://hyp.is/y6NjHjheEeqEhG-j_u3puA/docs.databricks.com/delta/join-performance/range-join.html
+        */
+      val rangesData = rangesWeeklyData("2019-12-20")
       val ds = trnsData
-        .join(rangesWeeklyData("2019-12-20"), $"time" between($"start", $"end"), "inner")
+        .join(rangesData, ($"trns.ctgId" === $"ranges.ctgId") and ($"time" between($"start", $"end")), "inner")
         .select("*")
 
       /**
