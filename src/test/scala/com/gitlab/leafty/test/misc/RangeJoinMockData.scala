@@ -46,26 +46,25 @@ trait RangeJoinMockData {
     .createDataFrame(
       session.sparkContext.parallelize(
         Seq(
-          Row("ctg001", BigDecimal(100.00), parseDt("2019-12-20 09:10:12")),
-          Row("ctg001", BigDecimal(101.01), parseDt("2019-12-26 09:10:12")), // outside ranges
+          Trn("ctg001", BigDecimal(100.00), parseDt("2019-12-20 09:10:12")),
+          Trn("ctg001", BigDecimal(101.01), parseDt("2019-12-26 09:10:12")), // outside ranges
           //
-          Row("ctg001", BigDecimal(200.00), parseDt("2020-01-03 00:00:00")),
-          Row("ctg002", BigDecimal(200.00), parseDt("2020-01-03 00:00:00")), // different ctgId so will skipped
-          Row("ctg001", BigDecimal(201.23), parseDt("2020-01-01 00:00:00")), // outside ranges
-          Row("ctg001", BigDecimal(202.56), parseDt("2020-01-05 00:00:00")), // outside ranges
+          Trn("ctg001", BigDecimal(200.00), parseDt("2020-01-03 00:00:00")),
+          Trn("ctg002", BigDecimal(200.00), parseDt("2020-01-03 00:00:00")), // different ctgId so will skipped
+          Trn("ctg001", BigDecimal(201.23), parseDt("2020-01-01 00:00:00")), // outside ranges
+          Trn("ctg001", BigDecimal(202.56), parseDt("2020-01-05 00:00:00")), // outside ranges
           //
-          Row("ctg001", BigDecimal(300.00), parseDt("2020-01-10 16:20:00")),
-          Row("ctg001", BigDecimal(301.03), parseDt("2020-01-08 00:00:00")), // outside ranges
+          Trn("ctg001", BigDecimal(300.00), parseDt("2020-01-10 16:20:00")),
+          Trn("ctg001", BigDecimal(301.03), parseDt("2020-01-08 00:00:00")), // outside ranges
           //
-          Row("ctg001", BigDecimal(400.00), parseDt("2020-01-17 19:45:00")),
-          Row("ctg002", BigDecimal(400.00), parseDt("2020-01-17 19:45:00")), // different ctgId so will skipped
-          Row("ctg001", BigDecimal(401.62), parseDt("2020-01-16 00:00:00")), // outside ranges
+          Trn("ctg001", BigDecimal(400.00), parseDt("2020-01-17 19:45:00")),
+          Trn("ctg002", BigDecimal(400.00), parseDt("2020-01-17 19:45:00")), // different ctgId so will skipped
+          Trn("ctg001", BigDecimal(401.62), parseDt("2020-01-16 00:00:00")), // outside ranges
           //
-          Row("ctg001", BigDecimal(500.00), parseDt("2020-01-24 13:30:20")),
-          Row("ctg001", BigDecimal(501.83), parseDt("2020-01-26 00:00:00")), // outside ranges
-          Row("ctg001", BigDecimal(502.57), parseDt("2020-01-26 00:00:00"))  // outside ranges
-        )),
-      new StructType().add("ctgId", StringType).add("amount", DecimalType(10, 2)).add("time", TimestampType)
+          Trn("ctg001", BigDecimal(500.00), parseDt("2020-01-24 13:30:20")),
+          Trn("ctg001", BigDecimal(501.83), parseDt("2020-01-26 00:00:00")), // outside ranges
+          Trn("ctg001", BigDecimal(502.57), parseDt("2020-01-26 00:00:00"))  // outside ranges
+        ))
     )
     .as[Trn].alias("trns")
 

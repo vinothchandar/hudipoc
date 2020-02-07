@@ -24,7 +24,7 @@ class RangeJoinSpec extends AsyncBaseSpec with RangeJoinMockData {
       val rangesData = rangesWeeklyData("2019-12-20")
       val ds = trnsData
         .join(rangesData, ($"trns.ctgId" === $"ranges.ctgId") and ($"time" between($"start", $"end")), "inner")
-        .select("*")
+        .select($"trns.ctgId", $"amount", $"time", $"start", $"end")
 
       /**
         * #todo This uses `CartesianProduct` !
