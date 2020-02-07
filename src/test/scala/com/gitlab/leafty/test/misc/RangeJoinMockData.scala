@@ -18,7 +18,7 @@ trait RangeJoinMockData {
     new Timestamp(
       LocalDateTime.from(dtf.parse(str)).toInstant(ZoneOffset.UTC).toEpochMilli)
 
-  lazy val pointsData: Dataset[Trn] = session
+  lazy val trnsData: Dataset[Trn] = session
     .createDataFrame(
       session.sparkContext.parallelize(
         Seq(
@@ -50,7 +50,7 @@ trait RangeJoinMockData {
           Row(parseDt("2019-12-20 00:00:00"), parseDt("2019-12-21 00:00:00")),
           Row(parseDt("2019-12-27 00:00:00"), parseDt("2019-12-28 00:00:00")),
           Row(parseDt("2020-01-03 00:00:00"), parseDt("2020-01-04 00:00:00")),
-          Row(parseDt("2020-01-09 00:00:00"), parseDt("2020-01-10 00:00:00")),
+          Row(parseDt("2020-01-09 00:00:00"), parseDt("2020-01-10 00:00:00")), // wiggle?
           Row(parseDt("2020-01-17 00:00:00"), parseDt("2020-01-18 00:00:00")),
           Row(parseDt("2020-01-24 00:00:00"), parseDt("2020-01-25 00:00:00"))
         )),
