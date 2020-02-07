@@ -67,20 +67,17 @@ trait RangeJoinMockData {
     )
     .as[Trn]
 
-  private def makeRangeRow(ts: Timestamp) : Row = {
-    //val d = parseDate(date)
-    Row(ts, addToEOD(ts))
-  }
+  private def makeRangeRow(ts: Timestamp) = Row(ts, addToEOD(ts))
 
-  private def makeWeeklyDates(date: String, count: Int) : Seq[Timestamp] = {
+  private def makeDates(date: String, count: Int, dayCount: Int): Seq[Timestamp] = {
     val start = parseDate(date)
-    (0 until count).map(i ⇒ addDays(start, i * 7))
+    (0 until count).map(i ⇒ addDays(start, i * dayCount))
   }
 
   def rangesWeeklyData(startDate: String): Dataset[Range] = session
     .createDataFrame(
       session.sparkContext.parallelize(
-        makeWeeklyDates(startDate, 6).map(makeRangeRow)),
+        makeDates(startDate, 6, 7).map(makeRangeRow)),
       new StructType().add("start", TimestampType).add("end", TimestampType)
     )
     .as[Range]
