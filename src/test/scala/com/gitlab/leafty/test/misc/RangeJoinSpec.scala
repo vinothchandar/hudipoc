@@ -5,7 +5,7 @@ import org.apache.log4j.{Level, Logger}
 import org.apache.spark.sql.SparkSession
 
 /**
-  *
+  * Resource https://docs.databricks.com/delta/join-performance/range-join.html
   */
 class RangeJoinSpec extends AsyncBaseSpec with RangeJoinMockData {
 
