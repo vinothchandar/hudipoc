@@ -1,7 +1,7 @@
 package com.gitlab.leafty.test.misc
 
 import java.sql.Timestamp
-import java.time.{LocalDateTime, ZoneOffset}
+import java.time.{LocalDateTime, OffsetDateTime, ZoneOffset}
 import java.time.format.DateTimeFormatter
 
 import org.apache.spark.sql.{Dataset, Row, SparkSession}
@@ -16,7 +16,7 @@ trait RangeJoinMockData {
 
   def parseDt(str: String): Timestamp =
     new Timestamp(
-      LocalDateTime.from(dtf.parse(str)).toInstant(ZoneOffset.UTC).toEpochMilli)
+      LocalDateTime.from(dtf.parse(str)).toInstant(OffsetDateTime.now().getOffset()).toEpochMilli)
 
   lazy val trnsData: Dataset[Trn] = session
     .createDataFrame(
