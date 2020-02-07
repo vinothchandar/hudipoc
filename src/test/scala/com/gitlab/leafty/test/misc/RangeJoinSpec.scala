@@ -4,6 +4,9 @@ import com.gitlab.leafty.test.hudi.AsyncBaseSpec
 import org.apache.log4j.{Level, Logger}
 import org.apache.spark.sql.SparkSession
 
+/**
+  *
+  */
 class RangeJoinSpec extends AsyncBaseSpec with RangeJoinMockData {
 
   Logger.getLogger("org.apache").setLevel(Level.WARN)
@@ -19,6 +22,9 @@ class RangeJoinSpec extends AsyncBaseSpec with RangeJoinMockData {
         .join(rangesData, $"time" between ($"start", $"end"), "inner")
         .select("*")
 
+      /**
+        * #todo This uses `CartesianProduct` !
+        */
       ds.explain(true)
       ds.show()
 
