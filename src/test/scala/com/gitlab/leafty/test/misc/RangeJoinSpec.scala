@@ -1,8 +1,12 @@
 package com.gitlab.leafty.test.misc
 
+import java.sql.Timestamp
+
 import com.gitlab.leafty.test.hudi.AsyncBaseSpec
 import org.apache.log4j.{Level, Logger}
-import org.apache.spark.sql.SparkSession
+import org.apache.spark.SparkConf
+import org.apache.spark.serializer.{KryoRegistrator, KryoSerializer}
+import org.apache.spark.sql.{Encoders, SparkSession}
 
 /**
   * Resource https://docs.databricks.com/delta/join-performance/range-join.html
@@ -41,12 +45,28 @@ class RangeJoinSpec extends AsyncBaseSpec with RangeJoinMockData {
   }
 
   protected def getSparkSession: SparkSession = {
-    val builder = SparkSession
-      .builder()
-      .appName("hudipoc")
-      .master("local[2]")
-      .config("spark.ui.enabled", "false")
-      .config("spark.serializer", "org.apache.spark.serializer.KryoSerializer")
-    builder.getOrCreate()
+
+    val conf = new SparkConf()
+      .setAppName("hudipoc")
+      .setMaster("local[2]")
+      .set("spark.ui.enabled", "false")
+      .set("spark.serializer", classOf[KryoSerializer].getName)
+      .set("setWarnUnregisteredClasses", "true")
+      .set("spark.kryo.registrationRequired", "true")
+      .set("spark.kryo.registrator", classOf[serde.CustomRegistrator].getName)
+//      .registerKryoClasses(
+//        Array(
+//          classOf[java.math.BigDecimal],
+//          classOf[domain.Trn],
+//          classOf[Array[domain.Trn]],
+//          classOf[domain.Range],
+//          classOf[org.apache.spark.sql.Row],
+//          classOf[org.apache.spark.sql.catalyst.expressions.GenericRow],
+//          classOf[Array[org.apache.spark.sql.Row]],
+//          Class.forName(
+//            "org.apache.spark.internal.io.FileCommitProtocol$TaskCommitMessage")
+//        )
+      //)
+    SparkSession.builder().config(conf).getOrCreate()
   }
 }

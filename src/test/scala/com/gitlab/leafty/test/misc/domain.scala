@@ -1,14 +1,14 @@
-package com.gitlab.leafty.test
+package com.gitlab.leafty.test.misc
 
 import java.sql.Timestamp
 
+import DateTimeUtils._
 
-package object misc {
+object domain {
 
   type CtgId = String
 
   object Trn {
-    import DateTimeUtils._
 
     def amount(s: String) : BigDecimal = BigDecimal(s).setScale(2)
 
@@ -23,5 +23,5 @@ package object misc {
   case class Trn(ctgId: CtgId, amount: BigDecimal, time: Timestamp)
 
   case class Range(ctgId: CtgId, start: Timestamp, end: Timestamp)
-
 }
+

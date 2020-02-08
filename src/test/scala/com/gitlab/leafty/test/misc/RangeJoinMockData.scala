@@ -9,6 +9,7 @@ trait RangeJoinMockData {
 
   val session: SparkSession
   import session.implicits._
+  import domain._
 
   val ctg001 = "ctg001"
 
