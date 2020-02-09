@@ -10,12 +10,12 @@ object domain {
 
   object Trn {
 
-    def amount(s: String) : BigDecimal = BigDecimal(s).setScale(2)
+    def parseAmount(s: String) : BigDecimal = BigDecimal(s).setScale(2)
 
     /**
       * Marshalling helper for building objects from string based formats like CSV and Json
       */
-    def apply(ctgId: CtgId, amt: String, time: String): Trn = new Trn(ctgId, amount(amt), parseDt(time))
+    def apply(ctgId: CtgId, amt: String, time: String): Trn = new Trn(ctgId, parseAmount(amt), parseDt(time))
 
     def apply(ctgId: CtgId, amt: BigDecimal, time: Timestamp): Trn = new Trn(ctgId, amt.setScale(2), time)
   }

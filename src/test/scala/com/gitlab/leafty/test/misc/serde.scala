@@ -1,27 +1,23 @@
 package com.gitlab.leafty.test.misc
 
-import java.sql.Timestamp
-
-import org.apache.spark.serializer.KryoRegistrator
-
-
 object serde {
 
-    import com.esotericsoftware.kryo.Kryo
+    import com.esotericsoftware.kryo.{Kryo, Serializer}
     import com.esotericsoftware.kryo.io.{Input, Output}
+    import org.apache.spark.serializer.KryoRegistrator
 
-    import domain.Trn._
+    class TrnSerializer extends Serializer[domain.Trn]{
 
-    class TrnSerializer extends com.esotericsoftware.kryo.Serializer[domain.Trn]{
+        // #todo there must be a better way!
+        def ser(kryo: Kryo) : Serializer[domain.Trn] = kryo.getDefaultSerializer(classOf[domain.Trn]).asInstanceOf[Serializer[domain.Trn]]
+
         override def write(kryo: Kryo, output: Output, a: domain.Trn): Unit = {
-          //super.write(kryo, output, a)
-          output.writeString(a.ctgId)
-          output.writeString(a.amount.toString())
-          output.writeLong(a.time.getTime)
+          ser(kryo).write(kryo, output, a)
         }
 
         override def read(kryo: Kryo, input: Input, t: Class[domain.Trn]): domain.Trn = {
-          domain.Trn(input.readString(), amount(input.readString()), new Timestamp(input.readLong()))
+          val trn : domain.Trn = ser(kryo).read(kryo, input, t)
+          trn.copy(amount = trn.amount.setScale(2))
         }
     }
 
@@ -31,14 +27,12 @@ object serde {
         kryo.register(classOf[domain.Trn], new TrnSerializer())
         Array(
           classOf[java.math.BigDecimal],
-          //classOf[domain.Trn],
-          classOf[Array[domain.Trn]],
-          classOf[domain.Range],
           classOf[org.apache.spark.sql.Row],
           classOf[org.apache.spark.sql.catalyst.expressions.GenericRow],
           classOf[Array[org.apache.spark.sql.Row]],
-          Class.forName(
-            "org.apache.spark.internal.io.FileCommitProtocol$TaskCommitMessage")
+          //classOf[domain.Trn],
+          classOf[Array[domain.Trn]],
+          classOf[domain.Range]
         ).map(kryo.register)
       }
     }

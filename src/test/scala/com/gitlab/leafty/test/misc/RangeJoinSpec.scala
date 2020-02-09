@@ -35,12 +35,14 @@ class RangeJoinSpec extends AsyncBaseSpec with RangeJoinMockData {
         .select($"trns.ctgId", $"amount", $"time", $"start", $"end")
 
       /**
-        * #todo This uses `CartesianProduct` !
+        * #todo This uses `CartesianProduct` if not joining by `ctgId`.
         */
       ds.explain(true)
-      ds.show()
 
-      ds.collect().length shouldBe 5
+      val results = ds.collect()
+
+      ds.show()
+      results.length shouldBe 5
     }
   }
 
@@ -54,19 +56,7 @@ class RangeJoinSpec extends AsyncBaseSpec with RangeJoinMockData {
       .set("setWarnUnregisteredClasses", "true")
       .set("spark.kryo.registrationRequired", "true")
       .set("spark.kryo.registrator", classOf[serde.CustomRegistrator].getName)
-//      .registerKryoClasses(
-//        Array(
-//          classOf[java.math.BigDecimal],
-//          classOf[domain.Trn],
-//          classOf[Array[domain.Trn]],
-//          classOf[domain.Range],
-//          classOf[org.apache.spark.sql.Row],
-//          classOf[org.apache.spark.sql.catalyst.expressions.GenericRow],
-//          classOf[Array[org.apache.spark.sql.Row]],
-//          Class.forName(
-//            "org.apache.spark.internal.io.FileCommitProtocol$TaskCommitMessage")
-//        )
-      //)
+
     SparkSession.builder().config(conf).getOrCreate()
   }
 }
