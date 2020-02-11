@@ -32,4 +32,5 @@ object DateTimeUtils {
     cal.add(Calendar.MILLISECOND, 60*60*24*1000 - 1)
     new Timestamp(cal.getTime.getTime)
   }
+
 }

@@ -39,9 +39,54 @@ trait RangeJoinMockData {
     .as[Trn]
     .alias("trns")
 
+  lazy val scenario1_trnsData: Dataset[Trn] = session
+    .createDataFrame(
+      session.sparkContext.parallelize(Seq(
+        Trn(ctg001, "1233.00", "2021-01-01 00:00:00"),
+        Trn(ctg001, "1233.00", "2021-01-08 00:00:00"),
+        Trn(ctg001, "1233.00", "2021-01-15 00:00:00"),
+        Trn(ctg001, "1233.00", "2021-01-22 00:00:00")
+      ))
+    )
+    .as[Trn]
+    .alias("trns")
+
+  lazy val scenario7_trnsData: Dataset[Trn] = session
+    .createDataFrame(
+      session.sparkContext.parallelize(Seq(
+        Trn(ctg001, "451.90", "2021-08-06 00:00:00"),
+        Trn(ctg001, "451.90", "2021-08-13 00:00:00"),
+        Trn(ctg001, "451.90", "2021-08-20 00:00:00")
+      ))
+    )
+    .as[Trn]
+    .alias("trns")
+
+  lazy val scenario13_trnsData: Dataset[Trn] = session
+    .createDataFrame(
+      session.sparkContext.parallelize(Seq(
+        Trn(ctg001, "2213.0", "2022-01-21 00:00:00"),
+        Trn(ctg001, "2213.0", "2022-01-28 00:00:00"),
+        Trn(ctg001, "2213.0", "2022-02-11 00:00:00")
+      ))
+    )
+    .as[Trn]
+    .alias("trns")
+
+  lazy val scenario20_trnsData: Dataset[Trn] = session
+    .createDataFrame(
+      session.sparkContext.parallelize(Seq(
+        Trn(ctg001, "190.56", "2022-09-06 00:00:00"),
+        Trn(ctg001, "210.56", "2022-09-11 00:00:00"),
+        Trn(ctg001, "185.56", "2022-09-14 00:00:00"),
+        Trn(ctg001, "200.56", "2022-09-23 00:00:00")
+      ))
+    )
+    .as[Trn]
+    .alias("trns")
+
   import DateTimeUtils._
-  private def makeRangeRow(ts: Timestamp, ctgId: String) =
-    Row(ctgId, ts, addToEOD(ts))
+  private def makeRangeRow(ts: Timestamp, ctgId: String) = Row(ctgId, addDays(ts, -2), addDays(ts, 2))
 
   private def makeDates(date: String,
                         count: Int,
