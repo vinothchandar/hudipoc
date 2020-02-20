@@ -22,6 +22,6 @@ object domain {
 
   case class Trn(ctgId: CtgId, amount: BigDecimal, time: Timestamp)
 
-  case class Range(ctgId: CtgId, start: Timestamp, end: Timestamp)
+  case class Range(ctgId: CtgId, start: Timestamp, end: Timestamp, startAmt: Double, endAmt: Double)
 }
 

@@ -8,8 +8,8 @@ import org.apache.spark.sql.{Dataset, Row, SparkSession}
 trait RangeJoinMockData {
 
   val session: SparkSession
-  import session.implicits._
   import domain._
+  import session.implicits._
 
   val ctg001 = "ctg001"
 
@@ -86,7 +86,8 @@ trait RangeJoinMockData {
     .alias("trns")
 
   import DateTimeUtils._
-  private def makeRangeRow(ts: Timestamp, ctgId: String) = Row(ctgId, addDays(ts, -2), addDays(ts, 2))
+  private def makeRangeRow(ts: Timestamp, ctgId: String, amt: Double) = Row(ctgId, addDays(ts, -2),
+      addDays(ts, 2), addAmtRange(amt, false), addAmtRange(amt, true))
 
   private def makeDates(date: String,
                         count: Int,
@@ -95,16 +96,36 @@ trait RangeJoinMockData {
     (0 until count).map(i ⇒ addDays(start, i * dayCount))
   }
 
-  def rangesWeeklyData(startDate: String, ctgId: String): Dataset[Range] =
+  def calculateMedian(list: List[Any]): Double = {
+    val count = list.size
+    val median: Double = if (count % 2 == 0) {
+      val l = (count / 2 - 1).toInt
+      val r = (l + 1).toInt
+      (list(l).toString.toDouble + list(r).toString.toDouble) / 2
+    } else list((count / 2).toInt).toString.toDouble
+    println("Calculated median " + median)
+    median
+  }
+
+  def addAmtRange(amount: Double, direction: Boolean): Double = {
+    if (direction)
+      amount * 1.2
+    else
+      amount * 0.8
+  }
+
+  def rangesWeeklyData(startDate: String, ctgId: String, amt: Double): Dataset[Range] =
     session
       .createDataFrame(
         session.sparkContext.parallelize(
           makeDates(startDate, 6, 7).map((ts: Timestamp) =>
-            makeRangeRow(ts, ctgId))),
+            makeRangeRow(ts, ctgId, amt))),
         new StructType()
           .add("ctgId", StringType)
           .add("start", TimestampType)
           .add("end", TimestampType)
+          .add("startAmt", DoubleType) //@TODO - fix type to Decimal
+          .add("endAmt", DoubleType)
       )
       .as[Range]
       .alias("ranges")
