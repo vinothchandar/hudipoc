@@ -5,6 +5,8 @@ import java.sql.Timestamp
 import org.apache.spark.sql.types._
 import org.apache.spark.sql.{Dataset, Row, SparkSession}
 
+import scala.collection.mutable.ListBuffer
+
 trait RangeJoinMockData {
 
   val session: SparkSession
@@ -85,15 +87,50 @@ trait RangeJoinMockData {
     .as[Trn]
     .alias("trns")
 
+  lazy val scenario21_trnsData: Dataset[Trn] = session
+    .createDataFrame(
+      session.sparkContext.parallelize(Seq(
+        Trn(ctg001, "300.8", "2022-10-10 00:00:00"),
+        Trn(ctg001, "800.8", "2022-10-14 00:00:00"),
+        Trn(ctg001, "700.8", "2022-10-20 00:00:00"),
+        Trn(ctg001, "500.8", "2022-10-28 00:00:00")
+      ))
+    )
+    .as[Trn]
+    .alias("trns")
+
+  lazy val scenario22_trnsData: Dataset[Trn] = session
+    .createDataFrame(
+      session.sparkContext.parallelize(Seq(
+        Trn(ctg001, "1500.11", "2022-11-01 00:00:00"),
+        Trn(ctg001, "600.11", "2022-11-08 00:00:00"),
+        Trn(ctg001, "500.11", "2022-11-15 00:00:00"),
+        Trn(ctg001, "1000.11", "2022-11-25 00:00:00")
+      ))
+    )
+    .as[Trn]
+    .alias("trns")
+
   import DateTimeUtils._
   private def makeRangeRow(ts: Timestamp, ctgId: String, amt: Double) = Row(ctgId, addDays(ts, -2),
       addDays(ts, 2), addAmtRange(amt, false), addAmtRange(amt, true))
 
-  private def makeDates(date: String,
-                        count: Int,
-                        dayCount: Int): Seq[Timestamp] = {
-    val start = parseDate(date)
-    (0 until count).map(i ⇒ addDays(start, i * dayCount))
+  private def makeDates(date: String, count: Int, recurrenceDays: Int, coverageDays: Int): Seq[Timestamp]= {
+    var start = parseDate(date)
+
+    //@TODO refactor!!!
+    var list: ListBuffer[Timestamp] = ListBuffer.empty[Timestamp]
+
+    for (j <- 0 until coverageDays) {
+      println("###Start date: " + start)
+      for (i <- 0 until count) {
+        val ts = addDays(start, i * recurrenceDays)
+        list.append(ts)
+      }
+      start = addDays(start, 1)
+    }
+    list
+
   }
 
   def calculateMedian(list: List[Any]): Double = {
@@ -118,7 +155,7 @@ trait RangeJoinMockData {
     session
       .createDataFrame(
         session.sparkContext.parallelize(
-          makeDates(startDate, 6, 7).map((ts: Timestamp) =>
+          makeDates(startDate, 5, 7, 7).map((ts: Timestamp) =>
             makeRangeRow(ts, ctgId, amt))),
         new StructType()
           .add("ctgId", StringType)
