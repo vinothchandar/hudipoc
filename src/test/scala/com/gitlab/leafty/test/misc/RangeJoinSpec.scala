@@ -11,7 +11,7 @@ import org.apache.spark.sql.{DataFrame, Dataset, Row, SparkSession}
 /**
   * Resource https://docs.databricks.com/delta/join-performance/range-join.html
   */
-class RangeJoinSpec extends AsyncBaseSpec with RangeJoinMockData {
+class RangeJoinSpec extends AsyncBaseSpec with RangeJoinWeeklyMockData {
 
      Logger.getLogger("org.apache").setLevel(Level.WARN)
      Logger.getLogger("org.apache.hudi").setLevel(Level.WARN)
@@ -30,76 +30,6 @@ class RangeJoinSpec extends AsyncBaseSpec with RangeJoinMockData {
 //               results.length shouldBe 5 //without wiggle room of +/- 2 days
                results.length shouldBe 2 //with wiggle room of +/- 2 days
 
-          }
-
-          "work for `Scenario 1 Weekly - Salary Deposit regular deposit and regular amount`" in {
-
-               val median = calculateMedian(scenario1_trnsData.sort("amount").select("amount").collect().map(_ (0)).toList)
-
-               val rangesData = rangesWeeklyData("2021-01-01", ctg001, median)
-               val results: _root_.scala.Array[_root_.org.apache.spark.sql.Row] = matchRecurringTransactions(scenario1_trnsData, rangesData)
-
-               results.length shouldBe 4
-          }
-          "work for `Scenario 7 Weekly -  Second transaction from cut off date is missing`" in {
-
-               val median = calculateMedian(scenario7_trnsData.sort("amount").select("amount").collect().map(_ (0)).toList)
-
-               val rangesData = rangesWeeklyData("2021-08-06", ctg001, median)
-               val results: _root_.scala.Array[_root_.org.apache.spark.sql.Row] = matchRecurringTransactions(scenario7_trnsData, rangesData)
-
-               results.length shouldBe 3
-          }
-
-          "work for `Scenario 13 Weekly -  second transaction from cut off date is missing`" in {
-               val median = calculateMedian(scenario13_trnsData.sort("amount").select("amount").collect().map(_ (0)).toList)
-
-               val rangesData = rangesWeeklyData("2022-01-21", ctg001, median)
-               rangesData.sort("start").show(150, false)
-
-               val results: _root_.scala.Array[_root_.org.apache.spark.sql.Row] = matchRecurringTransactions(scenario13_trnsData, rangesData)
-
-               results.length shouldBe 3
-          }
-
-          "work for `Scenario 20 Weekly -  both date and amounts are in date range for two consecutive biweekly. <>2 days. And amount is 80% to120%`" in {
-
-               val median = calculateMedian(scenario20_trnsData.sort("amount").select("amount").collect().map(_ (0)).toList)
-               val rangesData = rangesWeeklyData("2022-09-06", ctg001, median)
-               println ("### Scenario 20 Data ranges")
-               rangesData.sort("start").show(150, false)
-
-               //Not needed as amount ranges are captured in join query
-//               val validatedTransactions = validateTransactionsByAmount(scenario20_trnsData.sort("amount").toDF())
-//               validatedTransactions.count() shouldBe 4
-
-               val results: Array[Row] = matchRecurringTransactions(scenario20_trnsData, rangesData)
-               results.length shouldBe 4
-          }
-
-          "work for `Scenario 21 Weekly -  dates are in range and amounts are not in date range for two consecutive biweekly. <>2 "in {
-
-               val median = calculateMedian(scenario21_trnsData.sort("amount").select("amount").collect().map(_ (0))
-                    .toList)
-               val rangesData = rangesWeeklyData("2022-10-10", ctg001, median)
-               println ("### Scenario 21 Data ranges")
-               rangesData.sort("start").show(150, false)
-
-               val results: Array[Row] = matchRecurringTransactions(scenario21_trnsData, rangesData)
-               results.length shouldBe 2
-          }
-
-         "work for `Scenario 22 Weekly -  dates are in range and amounts are not in date range for two consecutive " +
-              "biweekly. >3 days "in {
-
-               val median = calculateMedian(scenario22_trnsData.sort("amount").select("amount").collect().map(_ (0))
-                    .toList)
-               val rangesData = rangesWeeklyData("2022-11-01", ctg001, median)
-               println ("### Scenario 22 Data ranges")
-               rangesData.sort("start").show(150, false)
-
-               val results: Array[Row] = matchRecurringTransactions(scenario22_trnsData, rangesData)
-               results.length shouldBe 0
           }
      }
 
