@@ -24,6 +24,11 @@ object HoodieKeys {
   * @param mergeByKey name of field used to merge updates (records with same [[rowKey]]) in different ... updates
   * @see [[DataSourceWriteOptions.PRECOMBINE_FIELD_OPT_KEY]]
   */
+// TableDef probably is a better fit for how we renamed everything now.
+// While this is a good start.. In the general case, the key may be derived from  the incoming data using the KeyGenerator abstraction
+// Same for the mergeByKey, Its the common case to use a field's value, but can be complex using a custom HoodieRecordPayload implementation.
+// Should table type be here as well?
+// if you are registeing the table into Hive, then a HiveSyncConfig can also be part of this..
 abstract case class DatasetDef(name: String, rowKey: String, mergeByKey: String, location: Option[String] = None) {
 
   /**
@@ -127,6 +132,7 @@ object DataSetDef {
   lazy implicit val commonOpts = Map(
     "hoodie.insert.shuffle.parallelism" -> "4",
     "hoodie.upsert.shuffle.parallelism" -> "4",
+    // Should this be in the dataset def above? this is very similar to the rowKey
     DataSourceWriteOptions.PARTITIONPATH_FIELD_OPT_KEY -> HoodieKeys.PARTITION_KEY
   )
 
